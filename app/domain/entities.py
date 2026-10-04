@@ -72,6 +72,21 @@ class GoalStatus(str, Enum):
     CANCELLED = "CANCELLED"
 
 
+class BudgetAlertType(str, Enum):
+    """Notification levels generated from budget usage."""
+
+    WARNING = "WARNING"
+    EXCEEDED = "EXCEEDED"
+
+
+class BudgetUsageStatus(str, Enum):
+    """Current health of a budget period."""
+
+    SAFE = "SAFE"
+    WARNING = "WARNING"
+    EXCEEDED = "EXCEEDED"
+
+
 @dataclass
 class User:
     """Domain entity representing a user in the system."""
@@ -178,8 +193,31 @@ class Budget:
     category_id: int
     limit_amount: Decimal
     period: str = "MONTHLY"
+    alert_threshold: int = 80
+    alerts_enabled: bool = True
     id: int | None = None
     created_at: datetime = field(default_factory=_utc_now)
+
+
+@dataclass
+class BudgetAlert:
+    """Persistent notification emitted for a budget period threshold."""
+
+    user_id: int
+    budget_id: int
+    category_id: int
+    alert_type: BudgetAlertType
+    period_start: date
+    period_end: date
+    limit_amount: Decimal
+    spent_amount: Decimal
+    usage_percentage: Decimal
+    currency: str
+    id: int | None = None
+    read_at: datetime | None = None
+    resolved_at: datetime | None = None
+    created_at: datetime = field(default_factory=_utc_now)
+    updated_at: datetime = field(default_factory=_utc_now)
 
 
 @dataclass

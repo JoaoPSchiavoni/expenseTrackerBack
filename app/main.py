@@ -2,7 +2,7 @@
 FastAPI Main Application Entrypoint (Expense Tracker).
 
 Why: Initializes the web application, registers domain exception handlers,
-configures CORS middleware, and includes routers mapping all 47 endpoints
+configures CORS middleware, and includes routers mapping all 53 endpoints
 from the technical specification.
 """
 
@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.domain.exceptions import (
+    BudgetAlertNotFoundError,
     ContributionNotFoundError,
     GoalNotFoundError,
     InsufficientFundsError,
@@ -31,6 +32,7 @@ from app.infrastructure.exchange_rates.frankfurter import (
 )
 from app.infrastructure.web.routers import (
     auth_router,
+    budget_alerts_router,
     budgets_router,
     categories_router,
     currencies_router,
@@ -131,6 +133,16 @@ async def goal_not_found_handler(request: Request, exc: GoalNotFoundError) -> JS
     )
 
 
+@app.exception_handler(BudgetAlertNotFoundError)
+async def budget_alert_not_found_handler(
+    request: Request, exc: BudgetAlertNotFoundError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"error": "BUDGET_ALERT_NOT_FOUND", "detail": exc.message},
+    )
+
+
 @app.exception_handler(ContributionNotFoundError)
 async def contribution_not_found_handler(
     request: Request, exc: ContributionNotFoundError
@@ -179,6 +191,7 @@ app.include_router(categories_router, prefix=settings.API_V1_PREFIX)
 app.include_router(currencies_router, prefix=settings.API_V1_PREFIX)
 app.include_router(imports_router, prefix=settings.API_V1_PREFIX)
 app.include_router(goals_router, prefix=settings.API_V1_PREFIX)
+app.include_router(budget_alerts_router, prefix=settings.API_V1_PREFIX)
 app.include_router(transactions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(budgets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)

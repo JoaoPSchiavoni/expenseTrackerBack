@@ -2,11 +2,11 @@
 
 API REST de finanças pessoais construída como projeto de portfólio com FastAPI, PostgreSQL, SQLAlchemy e Clean Architecture.
 
-O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, importação CSV/OFX, conversão histórica de moedas, metas financeiras, orçamentos e relatórios financeiros. Todos os recursos são isolados por usuário.
+O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, importação CSV/OFX, conversão histórica de moedas, metas financeiras, orçamentos com alertas e relatórios financeiros. Todos os recursos são isolados por usuário.
 
 ## Destaques técnicos
 
-- 47 operações HTTP funcionais e documentadas com OpenAPI.
+- 53 operações HTTP funcionais e documentadas com OpenAPI.
 - Valores monetários armazenados como `NUMERIC(14, 2)` e manipulados com `Decimal`.
 - Taxas de câmbio diárias armazenadas com precisão `NUMERIC(20, 10)`.
 - Conversão histórica com cache local e integração substituível com o Frankfurter v2.
@@ -16,11 +16,13 @@ O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transaç
 - Arquivos processados em memória e descartados após o parsing.
 - Metas financeiras com progresso calculado, prazo, ciclo de vida e histórico de aportes.
 - Conclusão automática da meta e bloqueio pessimista contra aportes concorrentes.
+- Alertas preventivos e de orçamento excedido, deduplicados por período.
+- Caixa de notificações com contagem, leitura e resolução automática após correções.
 - Atualização de saldo e lançamento financeiro dentro da mesma transação de banco.
 - Bloqueio pessimista de carteira no PostgreSQL para evitar disputa de saldo.
 - Proteção contra IDOR em carteiras, categorias, transações, orçamentos e relatórios.
 - Exclusão de carteira implementada como arquivamento para preservar histórico financeiro.
-- 80 testes automatizados: 79 isolados e um fluxo completo em PostgreSQL.
+- 89 testes automatizados: 88 isolados e um fluxo completo em PostgreSQL.
 - Cobertura de código de 90%.
 - Ruff, Mypy, Pytest, Coverage, pre-commit e GitHub Actions.
 - Docker e Docker Compose para ambiente reproduzível.
@@ -78,12 +80,14 @@ erDiagram
     USER ||--o{ WALLET : owns
     USER ||--o{ CATEGORY : creates
     USER ||--o{ BUDGET : defines
+    USER ||--o{ BUDGET_ALERT : receives
     USER ||--o{ FINANCIAL_GOAL : sets
     USER ||--o{ IMPORT_BATCH : uploads
     WALLET ||--o{ TRANSACTION : contains
     WALLET ||--o{ IMPORT_BATCH : receives
     CATEGORY o|--o{ TRANSACTION : classifies
     CATEGORY ||--o{ BUDGET : limits
+    BUDGET ||--o{ BUDGET_ALERT : triggers
     IMPORT_BATCH ||--o{ IMPORT_ITEM : previews
     IMPORT_BATCH o|--o{ TRANSACTION : creates
     FINANCIAL_GOAL ||--o{ GOAL_CONTRIBUTION : receives
@@ -104,6 +108,7 @@ Todas as rotas de negócio usam o prefixo `/api/v1`.
 | Categorias | CRUD completo |
 | Transações | Criar, listar, consultar, atualizar, excluir e inserir em lote |
 | Orçamentos | CRUD completo por categoria e período |
+| Alertas de orçamento | Consumo atual, caixa de notificações, leitura e contagem |
 | Relatórios | Consolidado mensal e despesas por categoria |
 | Sistema | Health check público em `/health` |
 
@@ -133,6 +138,19 @@ CSV usa detecção automática de delimitador e colunas comuns em português/ing
 4. Ao atingir 100%, a meta passa automaticamente para `COMPLETED`.
 
 As metas usam a moeda-base do usuário como snapshot e não alteram o saldo das carteiras. Um aporte representa o acompanhamento do valor reservado; movimentações bancárias continuam sendo registradas exclusivamente como transações.
+
+### Alertas de orçamento
+
+Cada orçamento pode definir `alert_threshold` entre 1% e 99% (80% por padrão) e controlar a emissão com `alerts_enabled`. Despesas manuais, em lote e importadas por CSV/OFX atualizam os alertas automaticamente.
+
+- `WARNING`: consumo igual ou superior ao percentual preventivo configurado.
+- `EXCEEDED`: consumo igual ou superior a 100% do limite.
+- `GET /api/v1/budgets/status`: situação atual de todos os orçamentos.
+- `GET /api/v1/budget-alerts/`: notificações ativas ou históricas.
+- `GET /api/v1/budget-alerts/unread-count`: contador para badge no Flutter.
+- `PATCH /api/v1/budget-alerts/{id}/read` e `POST /api/v1/budget-alerts/read-all`: controle de leitura.
+
+Os alertas são únicos por orçamento, período e nível. Se uma despesa for corrigida ou removida, o alerta é marcado como resolvido; se o limite for cruzado novamente, ele é reativado como não lido.
 
 ## Executando localmente com Poetry
 

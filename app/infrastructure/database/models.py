@@ -53,6 +53,9 @@ class UserModel(Base):
     budgets: Mapped[list["BudgetModel"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    budget_alerts: Mapped[list["BudgetAlertModel"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     goals: Mapped[list["FinancialGoalModel"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -258,6 +261,10 @@ class BudgetModel(Base):
     __table_args__ = (
         CheckConstraint("limit_amount > 0", name="ck_budgets_limit_positive"),
         CheckConstraint("period IN ('WEEKLY', 'MONTHLY')", name="ck_budgets_period_valid"),
+        CheckConstraint(
+            "alert_threshold >= 1 AND alert_threshold <= 99",
+            name="ck_budgets_alert_threshold_valid",
+        ),
         UniqueConstraint("user_id", "category_id", "period", name="uq_budgets_scope"),
     )
 
@@ -270,12 +277,68 @@ class BudgetModel(Base):
     period: Mapped[str] = mapped_column(
         String(20), default="MONTHLY", server_default=text("'MONTHLY'")
     )
+    alert_threshold: Mapped[int] = mapped_column(default=80, server_default=text("80"))
+    alerts_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now, server_default=func.now()
     )
 
     user: Mapped[UserModel] = relationship(back_populates="budgets")
     category: Mapped[CategoryModel] = relationship(back_populates="budgets")
+    alerts: Mapped[list["BudgetAlertModel"]] = relationship(
+        back_populates="budget", cascade="all, delete-orphan"
+    )
+
+
+class BudgetAlertModel(Base):
+    """Deduplicated notification for one threshold in one budget period."""
+
+    __tablename__ = "budget_alerts"
+    __table_args__ = (
+        CheckConstraint(
+            "alert_type IN ('WARNING', 'EXCEEDED')",
+            name="ck_budget_alerts_type_valid",
+        ),
+        CheckConstraint("limit_amount > 0", name="ck_budget_alerts_limit_positive"),
+        CheckConstraint("spent_amount >= 0", name="ck_budget_alerts_spent_nonnegative"),
+        CheckConstraint("usage_percentage >= 0", name="ck_budget_alerts_usage_nonnegative"),
+        UniqueConstraint(
+            "budget_id",
+            "period_start",
+            "alert_type",
+            name="uq_budget_alerts_period_type",
+        ),
+        Index("ix_budget_alerts_user_active", "user_id", "resolved_at", "read_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    budget_id: Mapped[int] = mapped_column(
+        ForeignKey("budgets.id", ondelete="CASCADE"), index=True
+    )
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("categories.id", ondelete="CASCADE"), index=True
+    )
+    alert_type: Mapped[str] = mapped_column(String(20), index=True)
+    period_start: Mapped[date] = mapped_column(Date, index=True)
+    period_end: Mapped[date] = mapped_column(Date)
+    limit_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    spent_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    usage_percentage: Mapped[Decimal] = mapped_column(Numeric(9, 2))
+    currency: Mapped[str] = mapped_column(String(3))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now(), onupdate=_utc_now
+    )
+
+    user: Mapped[UserModel] = relationship(back_populates="budget_alerts")
+    budget: Mapped[BudgetModel] = relationship(back_populates="alerts")
 
 
 class FinancialGoalModel(Base):

@@ -60,6 +60,7 @@ def test_complete_financial_flow_on_postgres() -> None:
                     "category_id": category.json()["id"],
                     "limit_amount": "75.00",
                     "period": "MONTHLY",
+                    "alert_threshold": 20,
                 },
                 headers=headers,
             )
@@ -92,6 +93,12 @@ def test_complete_financial_flow_on_postgres() -> None:
             )
             assert transaction.status_code == 201
             assert transaction.json()["updated_wallet_balance"] == "75.00"
+
+            alerts = client.get("/api/v1/budget-alerts/", headers=headers)
+            assert alerts.status_code == 200
+            assert len(alerts.json()) == 1
+            assert alerts.json()[0]["alert_type"] == "WARNING"
+            assert alerts.json()[0]["spent_amount"] == "25.00"
 
             transaction_id = transaction.json()["transaction"]["id"]
             updated = client.put(

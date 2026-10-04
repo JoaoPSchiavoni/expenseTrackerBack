@@ -11,6 +11,7 @@ from app.domain.entities import (
     require_id,
 )
 from app.domain.exceptions import WalletNotFoundError
+from app.use_cases.budget_alerts import BudgetAlertService
 from app.use_cases.exchange_rates import ExchangeRateService
 from app.use_cases.interfaces.transaction_repository import TransactionRepositoryInterface
 from app.use_cases.interfaces.wallet_repository import WalletRepositoryInterface
@@ -24,10 +25,12 @@ class ManageTransactionUseCase:
         transaction_repository: TransactionRepositoryInterface,
         wallet_repository: WalletRepositoryInterface,
         exchange_rate_service: ExchangeRateService,
+        budget_alert_service: BudgetAlertService,
     ) -> None:
         self.transaction_repository = transaction_repository
         self.wallet_repository = wallet_repository
         self.exchange_rate_service = exchange_rate_service
+        self.budget_alert_service = budget_alert_service
 
     def _load(self, transaction_id: int, user_id: int) -> tuple[Transaction, Wallet]:
         transaction = self.transaction_repository.get_by_id_for_user(transaction_id, user_id)
@@ -68,6 +71,9 @@ class ManageTransactionUseCase:
         timezone_name: str,
     ) -> tuple[Transaction, Wallet]:
         transaction, wallet = self._load(transaction_id, user_id)
+        old_category_id = transaction.category_id
+        old_occurred_at = transaction.occurred_at
+        old_type = transaction.transaction_type
         new_amount = amount if amount is not None else transaction.amount
         new_type = transaction_type or transaction.transaction_type
 
@@ -101,10 +107,23 @@ class ManageTransactionUseCase:
         updated_wallet = self.wallet_repository.update_balance(
             require_id(wallet.id), wallet.balance
         )
+        if old_type == TransactionType.EXPENSE:
+            self.budget_alert_service.evaluate_scope(
+                user_id=user_id,
+                category_id=old_category_id,
+                reference=old_occurred_at,
+                timezone_name=timezone_name,
+                currency=transaction.base_currency,
+            )
+        self.budget_alert_service.evaluate_transaction(saved, user_id, timezone_name)
         return saved, updated_wallet
 
-    def delete(self, *, transaction_id: int, user_id: int) -> Wallet:
+    def delete(
+        self, *, transaction_id: int, user_id: int, timezone_name: str = "America/Sao_Paulo"
+    ) -> Wallet:
         transaction, wallet = self._load(transaction_id, user_id)
         self._reverse(wallet, transaction)
         self.transaction_repository.delete(require_id(transaction.id))
-        return self.wallet_repository.update_balance(require_id(wallet.id), wallet.balance)
+        updated_wallet = self.wallet_repository.update_balance(require_id(wallet.id), wallet.balance)
+        self.budget_alert_service.evaluate_transaction(transaction, user_id, timezone_name)
+        return updated_wallet

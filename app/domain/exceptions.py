@@ -94,3 +94,10 @@ class InvalidGoalStateError(DomainError):
 
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class BudgetAlertNotFoundError(DomainError):
+    """Raised when an alert is missing or belongs to another user."""
+
+    def __init__(self, alert_id: int) -> None:
+        super().__init__(f"Budget alert with ID {alert_id} was not found.")

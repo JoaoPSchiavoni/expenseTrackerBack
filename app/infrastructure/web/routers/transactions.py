@@ -180,6 +180,10 @@ def delete_transaction(
     use_case: ManageTransactionUseCase = Depends(get_manage_transaction_use_case),
 ) -> None:
     try:
-        use_case.delete(transaction_id=id, user_id=require_id(current_user.id))
+        use_case.delete(
+            transaction_id=id,
+            user_id=require_id(current_user.id),
+            timezone_name=current_user.timezone,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

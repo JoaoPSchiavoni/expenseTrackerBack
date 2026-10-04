@@ -17,6 +17,8 @@ class SqlBudgetRepository(BudgetRepositoryInterface):
             category_id=model.category_id,
             limit_amount=model.limit_amount,
             period=model.period,
+            alert_threshold=model.alert_threshold,
+            alerts_enabled=model.alerts_enabled,
             created_at=model.created_at,
         )
 
@@ -26,6 +28,8 @@ class SqlBudgetRepository(BudgetRepositoryInterface):
             category_id=budget.category_id,
             limit_amount=budget.limit_amount,
             period=budget.period,
+            alert_threshold=budget.alert_threshold,
+            alerts_enabled=budget.alerts_enabled,
         )
         self.session.add(model)
         self.session.flush()
@@ -61,12 +65,22 @@ class SqlBudgetRepository(BudgetRepositoryInterface):
         )
         return [self._to_entity(model) for model in models]
 
+    def list_by_category(self, user_id: int, category_id: int) -> list[Budget]:
+        models = (
+            self.session.query(BudgetModel)
+            .filter(BudgetModel.user_id == user_id, BudgetModel.category_id == category_id)
+            .all()
+        )
+        return [self._to_entity(model) for model in models]
+
     def update(self, budget: Budget) -> Budget:
         model = self.session.get(BudgetModel, budget.id)
         if model is None:
             raise ValueError("Budget not found")
         model.limit_amount = budget.limit_amount
         model.period = budget.period
+        model.alert_threshold = budget.alert_threshold
+        model.alerts_enabled = budget.alerts_enabled
         self.session.flush()
         self.session.refresh(model)
         return self._to_entity(model)

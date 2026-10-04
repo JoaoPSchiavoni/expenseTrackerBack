@@ -23,6 +23,7 @@ from app.infrastructure.security.jwt_handler import (
     hash_password,
     verify_password,
 )
+from app.interfaces.repositories.sql_budget_alert_repository import SqlBudgetAlertRepository
 from app.interfaces.repositories.sql_budget_repository import SqlBudgetRepository
 from app.interfaces.repositories.sql_category_repository import SqlCategoryRepository
 from app.interfaces.repositories.sql_exchange_rate_repository import SqlExchangeRateRepository
@@ -34,6 +35,7 @@ from app.interfaces.repositories.sql_user_repository import SqlUserRepository
 from app.interfaces.repositories.sql_wallet_repository import SqlWalletRepository
 from app.use_cases.auth.login import AuthenticateUserUseCase
 from app.use_cases.auth.register import RegisterUserUseCase
+from app.use_cases.budget_alerts import BudgetAlertService
 from app.use_cases.exchange_rates import ExchangeRateService
 from app.use_cases.goals import ManageGoalsUseCase
 from app.use_cases.imports import ImportStatementsUseCase
@@ -79,6 +81,19 @@ def get_category_repository(session: Session = Depends(get_db)) -> CategoryRepos
 
 def get_budget_repository(session: Session = Depends(get_db)) -> BudgetRepositoryInterface:
     return SqlBudgetRepository(session)
+
+
+def get_budget_alert_repository(
+    session: Session = Depends(get_db),
+) -> SqlBudgetAlertRepository:
+    return SqlBudgetAlertRepository(session)
+
+
+def get_budget_alert_service(
+    budget_repo: BudgetRepositoryInterface = Depends(get_budget_repository),
+    alert_repo: SqlBudgetAlertRepository = Depends(get_budget_alert_repository),
+) -> BudgetAlertService:
+    return BudgetAlertService(budget_repo, alert_repo)
 
 
 def get_report_repository(session: Session = Depends(get_db)) -> SqlReportRepository:
@@ -130,12 +145,14 @@ def get_create_transaction_use_case(
     tx_repo: TransactionRepositoryInterface = Depends(get_transaction_repository),
     wallet_repo: WalletRepositoryInterface = Depends(get_wallet_repository),
     exchange_rate_service: ExchangeRateService = Depends(get_exchange_rate_service),
+    budget_alert_service: BudgetAlertService = Depends(get_budget_alert_service),
 ) -> CreateTransactionUseCase:
     """Builds and injects the create transaction use case."""
     return CreateTransactionUseCase(
         transaction_repository=tx_repo,
         wallet_repository=wallet_repo,
         exchange_rate_service=exchange_rate_service,
+        budget_alert_service=budget_alert_service,
     )
 
 
@@ -143,8 +160,11 @@ def get_manage_transaction_use_case(
     tx_repo: TransactionRepositoryInterface = Depends(get_transaction_repository),
     wallet_repo: WalletRepositoryInterface = Depends(get_wallet_repository),
     exchange_rate_service: ExchangeRateService = Depends(get_exchange_rate_service),
+    budget_alert_service: BudgetAlertService = Depends(get_budget_alert_service),
 ) -> ManageTransactionUseCase:
-    return ManageTransactionUseCase(tx_repo, wallet_repo, exchange_rate_service)
+    return ManageTransactionUseCase(
+        tx_repo, wallet_repo, exchange_rate_service, budget_alert_service
+    )
 
 
 def get_import_statements_use_case(

@@ -23,6 +23,7 @@ from app.domain.exceptions import (
     UnauthorizedWalletAccessError,
     WalletNotFoundError,
 )
+from app.use_cases.budget_alerts import BudgetAlertService
 from app.use_cases.exchange_rates import ExchangeRateService
 from app.use_cases.interfaces.transaction_repository import TransactionRepositoryInterface
 from app.use_cases.interfaces.wallet_repository import WalletRepositoryInterface
@@ -42,6 +43,7 @@ class CreateTransactionUseCase:
         transaction_repository: TransactionRepositoryInterface,
         wallet_repository: WalletRepositoryInterface,
         exchange_rate_service: ExchangeRateService,
+        budget_alert_service: BudgetAlertService,
     ) -> None:
         """Injects repository dependencies required to complete the workflow.
 
@@ -52,6 +54,7 @@ class CreateTransactionUseCase:
         self.transaction_repository = transaction_repository
         self.wallet_repository = wallet_repository
         self.exchange_rate_service = exchange_rate_service
+        self.budget_alert_service = budget_alert_service
 
     def execute(
         self,
@@ -164,6 +167,9 @@ class CreateTransactionUseCase:
             import_batch_id=import_batch_id,
         )
         saved_transaction = self.transaction_repository.create(new_transaction)
+        self.budget_alert_service.evaluate_transaction(
+            saved_transaction, user_id, timezone_name
+        )
 
         logger.info(
             "Transaction %s created for wallet %s with new balance %s",

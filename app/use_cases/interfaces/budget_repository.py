@@ -17,6 +17,9 @@ class BudgetRepositoryInterface(ABC):
     def list_by_user(self, user_id: int) -> list[Budget]: ...
 
     @abstractmethod
+    def list_by_category(self, user_id: int, category_id: int) -> list[Budget]: ...
+
+    @abstractmethod
     def update(self, budget: Budget) -> Budget: ...
 
     @abstractmethod
