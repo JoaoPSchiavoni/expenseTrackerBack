@@ -2,7 +2,7 @@
 FastAPI Main Application Entrypoint (Expense Tracker).
 
 Why: Initializes the web application, registers domain exception handlers,
-configures CORS middleware, and includes routers mapping all 30 endpoints
+configures CORS middleware, and includes routers mapping all 47 endpoints
 from the technical specification.
 """
 
@@ -16,8 +16,11 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.domain.exceptions import (
+    ContributionNotFoundError,
+    GoalNotFoundError,
     InsufficientFundsError,
     InvalidCredentialsError,
+    InvalidGoalStateError,
     UnauthorizedWalletAccessError,
     UserAlreadyExistsError,
     WalletNotFoundError,
@@ -31,6 +34,7 @@ from app.infrastructure.web.routers import (
     budgets_router,
     categories_router,
     currencies_router,
+    goals_router,
     health_router,
     imports_router,
     reports_router,
@@ -119,6 +123,34 @@ async def invalid_credentials_handler(
     )
 
 
+@app.exception_handler(GoalNotFoundError)
+async def goal_not_found_handler(request: Request, exc: GoalNotFoundError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"error": "GOAL_NOT_FOUND", "detail": exc.message},
+    )
+
+
+@app.exception_handler(ContributionNotFoundError)
+async def contribution_not_found_handler(
+    request: Request, exc: ContributionNotFoundError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"error": "CONTRIBUTION_NOT_FOUND", "detail": exc.message},
+    )
+
+
+@app.exception_handler(InvalidGoalStateError)
+async def invalid_goal_state_handler(
+    request: Request, exc: InvalidGoalStateError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"error": "INVALID_GOAL_STATE", "detail": exc.message},
+    )
+
+
 @app.exception_handler(ExchangeRateProviderError)
 async def exchange_rate_provider_handler(
     request: Request, exc: ExchangeRateProviderError
@@ -146,6 +178,7 @@ app.include_router(wallets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(categories_router, prefix=settings.API_V1_PREFIX)
 app.include_router(currencies_router, prefix=settings.API_V1_PREFIX)
 app.include_router(imports_router, prefix=settings.API_V1_PREFIX)
+app.include_router(goals_router, prefix=settings.API_V1_PREFIX)
 app.include_router(transactions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(budgets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)

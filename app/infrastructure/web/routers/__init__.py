@@ -4,6 +4,7 @@ from app.infrastructure.web.routers.auth import router as auth_router
 from app.infrastructure.web.routers.budgets import router as budgets_router
 from app.infrastructure.web.routers.categories import router as categories_router
 from app.infrastructure.web.routers.currencies import router as currencies_router
+from app.infrastructure.web.routers.goals import router as goals_router
 from app.infrastructure.web.routers.health import router as health_router
 from app.infrastructure.web.routers.imports import router as imports_router
 from app.infrastructure.web.routers.reports import router as reports_router
@@ -21,5 +22,6 @@ __all__ = [
     "budgets_router",
     "reports_router",
     "health_router",
+    "goals_router",
     "imports_router",
 ]

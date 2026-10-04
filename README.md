@@ -2,11 +2,11 @@
 
 API REST de finanças pessoais construída como projeto de portfólio com FastAPI, PostgreSQL, SQLAlchemy e Clean Architecture.
 
-O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, importação CSV/OFX, conversão histórica de moedas, orçamentos e relatórios financeiros. Todos os recursos são isolados por usuário.
+O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, importação CSV/OFX, conversão histórica de moedas, metas financeiras, orçamentos e relatórios financeiros. Todos os recursos são isolados por usuário.
 
 ## Destaques técnicos
 
-- 39 operações HTTP funcionais e documentadas com OpenAPI.
+- 47 operações HTTP funcionais e documentadas com OpenAPI.
 - Valores monetários armazenados como `NUMERIC(14, 2)` e manipulados com `Decimal`.
 - Taxas de câmbio diárias armazenadas com precisão `NUMERIC(20, 10)`.
 - Conversão histórica com cache local e integração substituível com o Frankfurter v2.
@@ -14,11 +14,13 @@ O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transaç
 - Importação CSV, OFX 1.x/2.x e QFX com preview antes da confirmação.
 - Deduplicação por carteira, origem e identificador bancário/fingerprint.
 - Arquivos processados em memória e descartados após o parsing.
+- Metas financeiras com progresso calculado, prazo, ciclo de vida e histórico de aportes.
+- Conclusão automática da meta e bloqueio pessimista contra aportes concorrentes.
 - Atualização de saldo e lançamento financeiro dentro da mesma transação de banco.
 - Bloqueio pessimista de carteira no PostgreSQL para evitar disputa de saldo.
 - Proteção contra IDOR em carteiras, categorias, transações, orçamentos e relatórios.
 - Exclusão de carteira implementada como arquivamento para preservar histórico financeiro.
-- 72 testes automatizados: 71 isolados e um fluxo completo em PostgreSQL.
+- 80 testes automatizados: 79 isolados e um fluxo completo em PostgreSQL.
 - Cobertura de código de 90%.
 - Ruff, Mypy, Pytest, Coverage, pre-commit e GitHub Actions.
 - Docker e Docker Compose para ambiente reproduzível.
@@ -76,6 +78,7 @@ erDiagram
     USER ||--o{ WALLET : owns
     USER ||--o{ CATEGORY : creates
     USER ||--o{ BUDGET : defines
+    USER ||--o{ FINANCIAL_GOAL : sets
     USER ||--o{ IMPORT_BATCH : uploads
     WALLET ||--o{ TRANSACTION : contains
     WALLET ||--o{ IMPORT_BATCH : receives
@@ -83,6 +86,7 @@ erDiagram
     CATEGORY ||--o{ BUDGET : limits
     IMPORT_BATCH ||--o{ IMPORT_ITEM : previews
     IMPORT_BATCH o|--o{ TRANSACTION : creates
+    FINANCIAL_GOAL ||--o{ GOAL_CONTRIBUTION : receives
 ```
 
 ## Recursos da API
@@ -96,6 +100,7 @@ Todas as rotas de negócio usam o prefixo `/api/v1`.
 | Carteiras | Criar, listar, consultar, atualizar e arquivar |
 | Moedas | Listar moedas suportadas e consultar conversão histórica |
 | Importações | Upload, histórico, preview, confirmação e descarte de CSV/OFX |
+| Metas financeiras | CRUD, filtros por status e histórico de aportes |
 | Categorias | CRUD completo |
 | Transações | Criar, listar, consultar, atualizar, excluir e inserir em lote |
 | Orçamentos | CRUD completo por categoria e período |
@@ -119,6 +124,15 @@ Cada usuário possui uma moeda-base e um fuso horário. Cada transação preserv
 3. Confirme o lote em `POST /api/v1/imports/{id}/confirm`, opcionalmente associando categorias ou ignorando linhas.
 
 CSV usa detecção automática de delimitador e colunas comuns em português/inglês. Para layouts próprios, o campo multipart `options` aceita um objeto JSON com `date`, `description`, `amount` ou `debit`/`credit`, `type`, `id`, `delimiter` e `date_format`.
+
+### Fluxo de metas financeiras
+
+1. Crie uma meta em `POST /api/v1/goals/` com nome, valor-alvo e prazo opcional.
+2. Registre economias em `POST /api/v1/goals/{id}/contributions`.
+3. Acompanhe valor atual, restante e percentual diretamente na resposta da meta.
+4. Ao atingir 100%, a meta passa automaticamente para `COMPLETED`.
+
+As metas usam a moeda-base do usuário como snapshot e não alteram o saldo das carteiras. Um aporte representa o acompanhamento do valor reservado; movimentações bancárias continuam sendo registradas exclusivamente como transações.
 
 ## Executando localmente com Poetry
 

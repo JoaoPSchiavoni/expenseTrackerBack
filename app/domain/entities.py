@@ -64,6 +64,14 @@ class TransactionSource(str, Enum):
     OFX = "OFX"
 
 
+class GoalStatus(str, Enum):
+    """Lifecycle states for a financial goal."""
+
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
 @dataclass
 class User:
     """Domain entity representing a user in the system."""
@@ -170,5 +178,45 @@ class Budget:
     category_id: int
     limit_amount: Decimal
     period: str = "MONTHLY"
+    id: int | None = None
+    created_at: datetime = field(default_factory=_utc_now)
+
+
+@dataclass
+class FinancialGoal:
+    """A savings target tracked independently from wallet balances."""
+
+    user_id: int
+    name: str
+    target_amount: Decimal
+    currency: str
+    description: str | None = None
+    current_amount: Decimal = Decimal("0.00")
+    target_date: date | None = None
+    status: GoalStatus = GoalStatus.ACTIVE
+    id: int | None = None
+    created_at: datetime = field(default_factory=_utc_now)
+    updated_at: datetime = field(default_factory=_utc_now)
+    completed_at: datetime | None = None
+
+    @property
+    def remaining_amount(self) -> Decimal:
+        return normalize_money(max(Decimal("0.00"), self.target_amount - self.current_amount))
+
+    @property
+    def progress_percentage(self) -> Decimal:
+        if self.target_amount <= 0:
+            return Decimal("0.00")
+        return normalize_money(min(Decimal("100.00"), self.current_amount * 100 / self.target_amount))
+
+
+@dataclass
+class GoalContribution:
+    """An auditable increment in a financial goal's progress."""
+
+    goal_id: int
+    amount: Decimal
+    contributed_at: datetime
+    note: str | None = None
     id: int | None = None
     created_at: datetime = field(default_factory=_utc_now)

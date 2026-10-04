@@ -65,6 +65,21 @@ def test_complete_financial_flow_on_postgres() -> None:
             )
             assert budget.status_code == 201
 
+            goal = client.post(
+                "/api/v1/goals/",
+                json={"name": "Integration Goal", "target_amount": "100.00"},
+                headers=headers,
+            )
+            assert goal.status_code == 201
+            contribution = client.post(
+                f"/api/v1/goals/{goal.json()['id']}/contributions",
+                json={"amount": "25.00", "note": "PostgreSQL validation"},
+                headers=headers,
+            )
+            assert contribution.status_code == 201
+            assert contribution.json()["goal"]["current_amount"] == "25.00"
+            assert contribution.json()["goal"]["progress_percentage"] == "25.00"
+
             transaction = client.post(
                 "/api/v1/transactions/",
                 json={

@@ -73,3 +73,24 @@ class InvalidImportStateError(DomainError):
 
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class GoalNotFoundError(DomainError):
+    """Raised when a goal is missing or belongs to another user."""
+
+    def __init__(self, goal_id: int) -> None:
+        super().__init__(f"Financial goal with ID {goal_id} was not found.")
+
+
+class ContributionNotFoundError(DomainError):
+    """Raised when a contribution is missing from the requested goal."""
+
+    def __init__(self, contribution_id: int) -> None:
+        super().__init__(f"Goal contribution with ID {contribution_id} was not found.")
+
+
+class InvalidGoalStateError(DomainError):
+    """Raised when a requested goal transition violates a business rule."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)

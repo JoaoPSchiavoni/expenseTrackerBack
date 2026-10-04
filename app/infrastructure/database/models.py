@@ -53,6 +53,9 @@ class UserModel(Base):
     budgets: Mapped[list["BudgetModel"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    goals: Mapped[list["FinancialGoalModel"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     import_batches: Mapped[list["ImportBatchModel"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -273,3 +276,70 @@ class BudgetModel(Base):
 
     user: Mapped[UserModel] = relationship(back_populates="budgets")
     category: Mapped[CategoryModel] = relationship(back_populates="budgets")
+
+
+class FinancialGoalModel(Base):
+    """Persisted savings target owned by one user."""
+
+    __tablename__ = "financial_goals"
+    __table_args__ = (
+        CheckConstraint("target_amount > 0", name="ck_financial_goals_target_positive"),
+        CheckConstraint("current_amount >= 0", name="ck_financial_goals_current_nonnegative"),
+        CheckConstraint(
+            "current_amount <= target_amount", name="ck_financial_goals_current_within_target"
+        ),
+        CheckConstraint(
+            "status IN ('ACTIVE', 'COMPLETED', 'CANCELLED')",
+            name="ck_financial_goals_status_valid",
+        ),
+        Index("ix_financial_goals_user_status", "user_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    target_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    current_amount: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2), default=Decimal("0.00"), server_default=text("0.00")
+    )
+    currency: Mapped[str] = mapped_column(String(3))
+    target_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(
+        String(20), default="ACTIVE", server_default=text("'ACTIVE'")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now(), onupdate=_utc_now
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped[UserModel] = relationship(back_populates="goals")
+    contributions: Mapped[list["GoalContributionModel"]] = relationship(
+        back_populates="goal", cascade="all, delete-orphan"
+    )
+
+
+class GoalContributionModel(Base):
+    """Append-only progress event for a financial goal."""
+
+    __tablename__ = "goal_contributions"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_goal_contributions_amount_positive"),
+        Index("ix_goal_contributions_goal_contributed", "goal_id", "contributed_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    goal_id: Mapped[int] = mapped_column(
+        ForeignKey("financial_goals.id", ondelete="CASCADE"), index=True
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    contributed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now()
+    )
+
+    goal: Mapped[FinancialGoalModel] = relationship(back_populates="contributions")

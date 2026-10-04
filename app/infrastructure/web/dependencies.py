@@ -26,6 +26,7 @@ from app.infrastructure.security.jwt_handler import (
 from app.interfaces.repositories.sql_budget_repository import SqlBudgetRepository
 from app.interfaces.repositories.sql_category_repository import SqlCategoryRepository
 from app.interfaces.repositories.sql_exchange_rate_repository import SqlExchangeRateRepository
+from app.interfaces.repositories.sql_goal_repository import SqlGoalRepository
 from app.interfaces.repositories.sql_import_repository import SqlImportRepository
 from app.interfaces.repositories.sql_report_repository import SqlReportRepository
 from app.interfaces.repositories.sql_transaction_repository import SqlTransactionRepository
@@ -34,6 +35,7 @@ from app.interfaces.repositories.sql_wallet_repository import SqlWalletRepositor
 from app.use_cases.auth.login import AuthenticateUserUseCase
 from app.use_cases.auth.register import RegisterUserUseCase
 from app.use_cases.exchange_rates import ExchangeRateService
+from app.use_cases.goals import ManageGoalsUseCase
 from app.use_cases.imports import ImportStatementsUseCase
 from app.use_cases.interfaces.budget_repository import BudgetRepositoryInterface
 from app.use_cases.interfaces.category_repository import CategoryRepositoryInterface
@@ -98,6 +100,10 @@ def get_import_repository(session: Session = Depends(get_db)) -> SqlImportReposi
     return SqlImportRepository(session)
 
 
+def get_goal_repository(session: Session = Depends(get_db)) -> SqlGoalRepository:
+    return SqlGoalRepository(session)
+
+
 # --- 3. Use Cases (Interactors) ---
 def get_register_user_use_case(
     user_repo: UserRepositoryInterface = Depends(get_user_repository),
@@ -158,6 +164,12 @@ def get_import_statements_use_case(
         max_file_size_bytes=settings.IMPORT_MAX_FILE_SIZE_BYTES,
         max_rows=settings.IMPORT_MAX_ROWS,
     )
+
+
+def get_manage_goals_use_case(
+    repository: SqlGoalRepository = Depends(get_goal_repository),
+) -> ManageGoalsUseCase:
+    return ManageGoalsUseCase(repository)
 
 
 # --- 4. Current Authenticated User ---
