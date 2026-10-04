@@ -157,6 +157,7 @@ class Transaction:
     rate_date: date | None = None
     source: TransactionSource = TransactionSource.MANUAL
     external_id: str | None = None
+    import_batch_id: int | None = None
     id: int | None = None
     created_at: datetime = field(default_factory=_utc_now)
 

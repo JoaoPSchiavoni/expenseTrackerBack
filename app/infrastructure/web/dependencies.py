@@ -16,6 +16,7 @@ from app.config import settings
 from app.domain.entities import User
 from app.infrastructure.database.connection import get_db_session
 from app.infrastructure.exchange_rates import FrankfurterExchangeRateProvider
+from app.infrastructure.imports import StatementParser
 from app.infrastructure.security.jwt_handler import (
     create_access_token,
     decode_access_token,
@@ -25,6 +26,7 @@ from app.infrastructure.security.jwt_handler import (
 from app.interfaces.repositories.sql_budget_repository import SqlBudgetRepository
 from app.interfaces.repositories.sql_category_repository import SqlCategoryRepository
 from app.interfaces.repositories.sql_exchange_rate_repository import SqlExchangeRateRepository
+from app.interfaces.repositories.sql_import_repository import SqlImportRepository
 from app.interfaces.repositories.sql_report_repository import SqlReportRepository
 from app.interfaces.repositories.sql_transaction_repository import SqlTransactionRepository
 from app.interfaces.repositories.sql_user_repository import SqlUserRepository
@@ -32,6 +34,7 @@ from app.interfaces.repositories.sql_wallet_repository import SqlWalletRepositor
 from app.use_cases.auth.login import AuthenticateUserUseCase
 from app.use_cases.auth.register import RegisterUserUseCase
 from app.use_cases.exchange_rates import ExchangeRateService
+from app.use_cases.imports import ImportStatementsUseCase
 from app.use_cases.interfaces.budget_repository import BudgetRepositoryInterface
 from app.use_cases.interfaces.category_repository import CategoryRepositoryInterface
 from app.use_cases.interfaces.transaction_repository import TransactionRepositoryInterface
@@ -91,6 +94,10 @@ def get_exchange_rate_service(session: Session = Depends(get_db)) -> ExchangeRat
     )
 
 
+def get_import_repository(session: Session = Depends(get_db)) -> SqlImportRepository:
+    return SqlImportRepository(session)
+
+
 # --- 3. Use Cases (Interactors) ---
 def get_register_user_use_case(
     user_repo: UserRepositoryInterface = Depends(get_user_repository),
@@ -132,6 +139,25 @@ def get_manage_transaction_use_case(
     exchange_rate_service: ExchangeRateService = Depends(get_exchange_rate_service),
 ) -> ManageTransactionUseCase:
     return ManageTransactionUseCase(tx_repo, wallet_repo, exchange_rate_service)
+
+
+def get_import_statements_use_case(
+    import_repo: SqlImportRepository = Depends(get_import_repository),
+    tx_repo: TransactionRepositoryInterface = Depends(get_transaction_repository),
+    wallet_repo: WalletRepositoryInterface = Depends(get_wallet_repository),
+    category_repo: CategoryRepositoryInterface = Depends(get_category_repository),
+    create_transaction: CreateTransactionUseCase = Depends(get_create_transaction_use_case),
+) -> ImportStatementsUseCase:
+    return ImportStatementsUseCase(
+        import_repository=import_repo,
+        transaction_repository=tx_repo,
+        wallet_repository=wallet_repo,
+        category_repository=category_repo,
+        create_transaction=create_transaction,
+        parser=StatementParser(),
+        max_file_size_bytes=settings.IMPORT_MAX_FILE_SIZE_BYTES,
+        max_rows=settings.IMPORT_MAX_ROWS,
+    )
 
 
 # --- 4. Current Authenticated User ---

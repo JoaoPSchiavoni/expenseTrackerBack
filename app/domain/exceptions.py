@@ -59,3 +59,17 @@ class InvalidCredentialsError(DomainError):
 
     def __init__(self) -> None:
         super().__init__("Invalid authentication credentials.")
+
+
+class ImportNotFoundError(DomainError):
+    """Raised when an import batch is missing or belongs to another user."""
+
+    def __init__(self, batch_id: int) -> None:
+        super().__init__(f"Import batch with ID {batch_id} was not found.")
+
+
+class InvalidImportStateError(DomainError):
+    """Raised when an operation is incompatible with the batch lifecycle."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)

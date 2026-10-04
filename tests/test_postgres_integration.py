@@ -95,6 +95,22 @@ def test_complete_financial_flow_on_postgres() -> None:
             deleted = client.delete(f"/api/v1/transactions/{transaction_id}", headers=headers)
             assert deleted.status_code == 204
 
+            statement = b"Data;Descricao;Valor;ID\n04/10/2026;Imported income;5,00;pg-1\n"
+            preview = client.post(
+                "/api/v1/imports/",
+                data={"wallet_id": str(wallet.json()["id"])},
+                files={"file": ("postgres.csv", statement, "text/csv")},
+                headers=headers,
+            )
+            assert preview.status_code == 201
+            confirmed = client.post(
+                f"/api/v1/imports/{preview.json()['batch']['id']}/confirm",
+                json={},
+                headers=headers,
+            )
+            assert confirmed.status_code == 200
+            assert confirmed.json()["batch"]["imported_rows"] == 1
+
             archived = client.delete(f"/api/v1/wallets/{wallet.json()['id']}", headers=headers)
             assert archived.status_code == 204
             assert client.get("/health").status_code == 200

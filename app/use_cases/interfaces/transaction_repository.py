@@ -7,7 +7,7 @@ without coupling to relational databases (PostgreSQL) or ORMs (SQLAlchemy).
 
 from abc import ABC, abstractmethod
 
-from app.domain.entities import Transaction
+from app.domain.entities import Transaction, TransactionSource
 
 
 class TransactionRepositoryInterface(ABC):
@@ -69,4 +69,11 @@ class TransactionRepositoryInterface(ABC):
     @abstractmethod
     def exists_for_user(self, user_id: int) -> bool:
         """Return whether a user already has at least one ledger entry."""
+        pass
+
+    @abstractmethod
+    def existing_external_ids(
+        self, wallet_id: int, source: TransactionSource, external_ids: set[str]
+    ) -> set[str]:
+        """Return import identities that already exist in a wallet ledger."""
         pass

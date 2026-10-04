@@ -2,20 +2,23 @@
 
 API REST de finanças pessoais construída como projeto de portfólio com FastAPI, PostgreSQL, SQLAlchemy e Clean Architecture.
 
-O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, conversão histórica de moedas, orçamentos e relatórios financeiros. Todos os recursos são isolados por usuário.
+O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, importação CSV/OFX, conversão histórica de moedas, orçamentos e relatórios financeiros. Todos os recursos são isolados por usuário.
 
 ## Destaques técnicos
 
-- 33 operações HTTP funcionais e documentadas com OpenAPI.
+- 39 operações HTTP funcionais e documentadas com OpenAPI.
 - Valores monetários armazenados como `NUMERIC(14, 2)` e manipulados com `Decimal`.
 - Taxas de câmbio diárias armazenadas com precisão `NUMERIC(20, 10)`.
 - Conversão histórica com cache local e integração substituível com o Frankfurter v2.
 - Snapshot contábil de moeda, cotação e valor convertido em cada transação.
+- Importação CSV, OFX 1.x/2.x e QFX com preview antes da confirmação.
+- Deduplicação por carteira, origem e identificador bancário/fingerprint.
+- Arquivos processados em memória e descartados após o parsing.
 - Atualização de saldo e lançamento financeiro dentro da mesma transação de banco.
 - Bloqueio pessimista de carteira no PostgreSQL para evitar disputa de saldo.
 - Proteção contra IDOR em carteiras, categorias, transações, orçamentos e relatórios.
 - Exclusão de carteira implementada como arquivamento para preservar histórico financeiro.
-- 57 testes automatizados: 56 isolados e um fluxo completo em PostgreSQL.
+- 72 testes automatizados: 71 isolados e um fluxo completo em PostgreSQL.
 - Cobertura de código de 90%.
 - Ruff, Mypy, Pytest, Coverage, pre-commit e GitHub Actions.
 - Docker e Docker Compose para ambiente reproduzível.
@@ -32,6 +35,7 @@ O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transaç
 | Migrações | Alembic |
 | Segurança | bcrypt e PyJWT |
 | Câmbio | Frankfurter API v2 e cache PostgreSQL |
+| Importação | CSV, python-multipart e ofxparse2 |
 | Testes | Pytest, HTTPX e SQLite em memória |
 | Qualidade | Ruff, Mypy e pytest-cov |
 | Infraestrutura | Docker, Docker Compose e GitHub Actions |
@@ -60,6 +64,7 @@ app/
 └── infrastructure/
     ├── database/            # Engine e modelos relacionais
     ├── exchange_rates/      # Adaptador do provedor de cotações
+    ├── imports/             # Parsers CSV/OFX sem armazenamento de arquivos
     ├── security/            # bcrypt e JWT
     └── web/                 # Dependências e routers FastAPI
 ```
@@ -71,9 +76,13 @@ erDiagram
     USER ||--o{ WALLET : owns
     USER ||--o{ CATEGORY : creates
     USER ||--o{ BUDGET : defines
+    USER ||--o{ IMPORT_BATCH : uploads
     WALLET ||--o{ TRANSACTION : contains
+    WALLET ||--o{ IMPORT_BATCH : receives
     CATEGORY o|--o{ TRANSACTION : classifies
     CATEGORY ||--o{ BUDGET : limits
+    IMPORT_BATCH ||--o{ IMPORT_ITEM : previews
+    IMPORT_BATCH o|--o{ TRANSACTION : creates
 ```
 
 ## Recursos da API
@@ -86,6 +95,7 @@ Todas as rotas de negócio usam o prefixo `/api/v1`.
 | Usuários | Consultar e atualizar perfil, preferências financeiras, alterar senha e desativar conta |
 | Carteiras | Criar, listar, consultar, atualizar e arquivar |
 | Moedas | Listar moedas suportadas e consultar conversão histórica |
+| Importações | Upload, histórico, preview, confirmação e descarte de CSV/OFX |
 | Categorias | CRUD completo |
 | Transações | Criar, listar, consultar, atualizar, excluir e inserir em lote |
 | Orçamentos | CRUD completo por categoria e período |
@@ -101,6 +111,14 @@ Documentação interativa:
 Os campos monetários são enviados como strings decimais, por exemplo `"125.50"`, evitando perda de precisão em JSON.
 
 Cada usuário possui uma moeda-base e um fuso horário. Cada transação preserva o valor e a moeda originais, além da cotação e do valor convertido usados nos relatórios. Para evitar misturar bases contábeis, a moeda-base do usuário e a moeda da carteira ficam bloqueadas depois da primeira movimentação relacionada.
+
+### Fluxo de importação
+
+1. Envie um `.csv`, `.ofx` ou `.qfx` para `POST /api/v1/imports/` usando multipart com `wallet_id` e `file`.
+2. Revise as linhas classificadas como `READY`, `DUPLICATE` ou `INVALID`.
+3. Confirme o lote em `POST /api/v1/imports/{id}/confirm`, opcionalmente associando categorias ou ignorando linhas.
+
+CSV usa detecção automática de delimitador e colunas comuns em português/inglês. Para layouts próprios, o campo multipart `options` aceita um objeto JSON com `date`, `description`, `amount` ou `debit`/`credit`, `type`, `id`, `delimiter` e `date_format`.
 
 ## Executando localmente com Poetry
 

@@ -32,6 +32,7 @@ from app.infrastructure.web.routers import (
     categories_router,
     currencies_router,
     health_router,
+    imports_router,
     reports_router,
     transactions_router,
     users_router,
@@ -144,6 +145,7 @@ app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 app.include_router(wallets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(categories_router, prefix=settings.API_V1_PREFIX)
 app.include_router(currencies_router, prefix=settings.API_V1_PREFIX)
+app.include_router(imports_router, prefix=settings.API_V1_PREFIX)
 app.include_router(transactions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(budgets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)

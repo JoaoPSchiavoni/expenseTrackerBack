@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     )
     EXCHANGE_RATE_API_URL: str = "https://api.frankfurter.dev/v2"
     EXCHANGE_RATE_TIMEOUT_SECONDS: float = Field(5.0, gt=0, le=30)
+    IMPORT_MAX_FILE_SIZE_BYTES: int = Field(5 * 1024 * 1024, gt=0)
+    IMPORT_MAX_ROWS: int = Field(5000, gt=0, le=50000)
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":

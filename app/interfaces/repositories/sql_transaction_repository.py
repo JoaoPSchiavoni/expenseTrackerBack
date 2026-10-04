@@ -36,6 +36,7 @@ class SqlTransactionRepository(TransactionRepositoryInterface):
             rate_date=model.rate_date,
             source=TransactionSource(model.source),
             external_id=model.external_id,
+            import_batch_id=model.import_batch_id,
             created_at=model.created_at,
         )
 
@@ -55,6 +56,7 @@ class SqlTransactionRepository(TransactionRepositoryInterface):
             rate_date=transaction.rate_date,
             source=transaction.source.value,
             external_id=transaction.external_id,
+            import_batch_id=transaction.import_batch_id,
         )
         self.session.add(model)
         self.session.flush()
@@ -124,3 +126,19 @@ class SqlTransactionRepository(TransactionRepositoryInterface):
             .first()
             is not None
         )
+
+    def existing_external_ids(
+        self, wallet_id: int, source: TransactionSource, external_ids: set[str]
+    ) -> set[str]:
+        if not external_ids:
+            return set()
+        rows = (
+            self.session.query(TransactionModel.external_id)
+            .filter(
+                TransactionModel.wallet_id == wallet_id,
+                TransactionModel.source == source.value,
+                TransactionModel.external_id.in_(external_ids),
+            )
+            .all()
+        )
+        return {value for (value,) in rows if value is not None}

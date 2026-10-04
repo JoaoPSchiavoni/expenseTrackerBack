@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     CheckConstraint,
     Date,
@@ -52,6 +53,9 @@ class UserModel(Base):
     budgets: Mapped[list["BudgetModel"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    import_batches: Mapped[list["ImportBatchModel"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class WalletModel(Base):
@@ -72,6 +76,9 @@ class WalletModel(Base):
 
     user: Mapped[UserModel] = relationship(back_populates="wallets")
     transactions: Mapped[list["TransactionModel"]] = relationship(
+        back_populates="wallet", cascade="all, delete-orphan"
+    )
+    import_batches: Mapped[list["ImportBatchModel"]] = relationship(
         back_populates="wallet", cascade="all, delete-orphan"
     )
 
@@ -106,6 +113,12 @@ class TransactionModel(Base):
         ),
         CheckConstraint("exchange_rate > 0", name="ck_transactions_exchange_rate_positive"),
         CheckConstraint("base_amount > 0", name="ck_transactions_base_amount_positive"),
+        UniqueConstraint(
+            "wallet_id",
+            "source",
+            "external_id",
+            name="uq_transactions_import_identity",
+        ),
         Index("ix_transactions_wallet_occurred_at", "wallet_id", "occurred_at"),
     )
 
@@ -129,12 +142,85 @@ class TransactionModel(Base):
         String(20), default="MANUAL", server_default=text("'MANUAL'")
     )
     external_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    import_batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("import_batches.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now, server_default=func.now(), index=True
     )
 
     wallet: Mapped[WalletModel] = relationship(back_populates="transactions")
     category: Mapped[CategoryModel | None] = relationship(back_populates="transactions")
+    import_batch: Mapped["ImportBatchModel | None"] = relationship(back_populates="transactions")
+
+
+class ImportBatchModel(Base):
+    __tablename__ = "import_batches"
+    __table_args__ = (
+        CheckConstraint("file_type IN ('CSV', 'OFX')", name="ck_import_batches_file_type_valid"),
+        CheckConstraint(
+            "status IN ('PREVIEW', 'COMPLETED', 'FAILED')",
+            name="ck_import_batches_status_valid",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    wallet_id: Mapped[int] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"), index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    file_type: Mapped[str] = mapped_column(String(10))
+    file_hash: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    mapping: Mapped[dict[str, str] | None] = mapped_column(JSON, nullable=True)
+    total_rows: Mapped[int] = mapped_column(default=0, server_default=text("0"))
+    valid_rows: Mapped[int] = mapped_column(default=0, server_default=text("0"))
+    duplicate_rows: Mapped[int] = mapped_column(default=0, server_default=text("0"))
+    invalid_rows: Mapped[int] = mapped_column(default=0, server_default=text("0"))
+    imported_rows: Mapped[int] = mapped_column(default=0, server_default=text("0"))
+    error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now()
+    )
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped[UserModel] = relationship(back_populates="import_batches")
+    wallet: Mapped[WalletModel] = relationship(back_populates="import_batches")
+    items: Mapped[list["ImportItemModel"]] = relationship(
+        back_populates="batch", cascade="all, delete-orphan"
+    )
+    transactions: Mapped[list[TransactionModel]] = relationship(back_populates="import_batch")
+
+
+class ImportItemModel(Base):
+    __tablename__ = "import_items"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('READY', 'DUPLICATE', 'INVALID', 'IMPORTED', 'IGNORED')",
+            name="ck_import_items_status_valid",
+        ),
+        UniqueConstraint("batch_id", "row_number", name="uq_import_items_batch_row"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    batch_id: Mapped[int] = mapped_column(
+        ForeignKey("import_batches.id", ondelete="CASCADE"), index=True
+    )
+    row_number: Mapped[int] = mapped_column()
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    occurred_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    transaction_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
+    )
+    transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True
+    )
+    error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    batch: Mapped[ImportBatchModel] = relationship(back_populates="items")
 
 
 class ExchangeRateModel(Base):

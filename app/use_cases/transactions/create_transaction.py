@@ -66,6 +66,7 @@ class CreateTransactionUseCase:
         timezone_name: str = "America/Sao_Paulo",
         source: TransactionSource = TransactionSource.MANUAL,
         external_id: str | None = None,
+        import_batch_id: int | None = None,
     ) -> tuple[Transaction, Wallet]:
         """Executes transaction creation, updating the wallet balance accordingly.
 
@@ -160,6 +161,7 @@ class CreateTransactionUseCase:
             rate_date=quote.effective_date,
             source=source,
             external_id=external_id,
+            import_batch_id=import_batch_id,
         )
         saved_transaction = self.transaction_repository.create(new_transaction)
 
