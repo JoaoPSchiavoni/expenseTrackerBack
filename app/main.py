@@ -2,7 +2,7 @@
 FastAPI Main Application Entrypoint (Expense Tracker).
 
 Why: Initializes the web application, registers domain exception handlers,
-configures CORS middleware, and includes routers mapping all 53 endpoints
+configures CORS middleware, and includes routers mapping all 57 endpoints
 from the technical specification.
 """
 
@@ -36,6 +36,7 @@ from app.infrastructure.web.routers import (
     budgets_router,
     categories_router,
     currencies_router,
+    dashboard_router,
     goals_router,
     health_router,
     imports_router,
@@ -189,6 +190,7 @@ app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 app.include_router(wallets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(categories_router, prefix=settings.API_V1_PREFIX)
 app.include_router(currencies_router, prefix=settings.API_V1_PREFIX)
+app.include_router(dashboard_router, prefix=settings.API_V1_PREFIX)
 app.include_router(imports_router, prefix=settings.API_V1_PREFIX)
 app.include_router(goals_router, prefix=settings.API_V1_PREFIX)
 app.include_router(budget_alerts_router, prefix=settings.API_V1_PREFIX)

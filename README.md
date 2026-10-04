@@ -2,11 +2,11 @@
 
 API REST de finanças pessoais construída como projeto de portfólio com FastAPI, PostgreSQL, SQLAlchemy e Clean Architecture.
 
-O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, importação CSV/OFX, conversão histórica de moedas, metas financeiras, orçamentos com alertas e relatórios financeiros. Todos os recursos são isolados por usuário.
+O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, importação CSV/OFX, conversão histórica de moedas, metas financeiras, orçamentos com alertas, dashboard e relatórios financeiros. Todos os recursos são isolados por usuário.
 
 ## Destaques técnicos
 
-- 53 operações HTTP funcionais e documentadas com OpenAPI.
+- 57 operações HTTP funcionais e documentadas com OpenAPI.
 - Valores monetários armazenados como `NUMERIC(14, 2)` e manipulados com `Decimal`.
 - Taxas de câmbio diárias armazenadas com precisão `NUMERIC(20, 10)`.
 - Conversão histórica com cache local e integração substituível com o Frankfurter v2.
@@ -18,11 +18,13 @@ O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transaç
 - Conclusão automática da meta e bloqueio pessimista contra aportes concorrentes.
 - Alertas preventivos e de orçamento excedido, deduplicados por período.
 - Caixa de notificações com contagem, leitura e resolução automática após correções.
+- Dashboard com visão mensal, patrimônio convertido, fluxo de caixa e distribuição por categoria.
+- Projeções prontas para gráficos e componentes Flutter, incluindo meses sem movimentação.
 - Atualização de saldo e lançamento financeiro dentro da mesma transação de banco.
 - Bloqueio pessimista de carteira no PostgreSQL para evitar disputa de saldo.
 - Proteção contra IDOR em carteiras, categorias, transações, orçamentos e relatórios.
 - Exclusão de carteira implementada como arquivamento para preservar histórico financeiro.
-- 89 testes automatizados: 88 isolados e um fluxo completo em PostgreSQL.
+- 95 testes automatizados: 94 isolados e um fluxo completo em PostgreSQL.
 - Cobertura de código de 90%.
 - Ruff, Mypy, Pytest, Coverage, pre-commit e GitHub Actions.
 - Docker e Docker Compose para ambiente reproduzível.
@@ -109,6 +111,7 @@ Todas as rotas de negócio usam o prefixo `/api/v1`.
 | Transações | Criar, listar, consultar, atualizar, excluir e inserir em lote |
 | Orçamentos | CRUD completo por categoria e período |
 | Alertas de orçamento | Consumo atual, caixa de notificações, leitura e contagem |
+| Dashboard | Visão geral, fluxo de caixa, gastos por categoria e transações recentes |
 | Relatórios | Consolidado mensal e despesas por categoria |
 | Sistema | Health check público em `/health` |
 
@@ -151,6 +154,17 @@ Cada orçamento pode definir `alert_threshold` entre 1% e 99% (80% por padrão) 
 - `PATCH /api/v1/budget-alerts/{id}/read` e `POST /api/v1/budget-alerts/read-all`: controle de leitura.
 
 Os alertas são únicos por orçamento, período e nível. Se uma despesa for corrigida ou removida, o alerta é marcado como resolvido; se o limite for cruzado novamente, ele é reativado como não lido.
+
+### Dashboard para Flutter
+
+Os endpoints retornam valores na moeda-base e estruturas diretamente consumíveis por cards, gráficos e listas:
+
+- `GET /api/v1/dashboard/overview`: receitas, despesas, economia, patrimônio, metas, orçamentos e alertas.
+- `GET /api/v1/dashboard/cash-flow`: série mensal de receitas, despesas e saldo, preenchendo meses vazios.
+- `GET /api/v1/dashboard/spending-by-category`: ranking e percentual de participação de cada categoria.
+- `GET /api/v1/dashboard/recent-transactions`: movimentações recentes enriquecidas com carteira e categoria.
+
+O patrimônio converte o saldo das carteiras para a moeda-base usando o mesmo cache histórico de cotações das transações. Períodos e agrupamentos respeitam o fuso horário configurado pelo usuário.
 
 ## Executando localmente com Poetry
 

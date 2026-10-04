@@ -100,6 +100,13 @@ def test_complete_financial_flow_on_postgres() -> None:
             assert alerts.json()[0]["alert_type"] == "WARNING"
             assert alerts.json()[0]["spent_amount"] == "25.00"
 
+            dashboard = client.get("/api/v1/dashboard/overview", headers=headers)
+            assert dashboard.status_code == 200
+            assert dashboard.json()["total_expense"] == "25.00"
+            assert dashboard.json()["transaction_count"] == 1
+            assert dashboard.json()["active_goals"] == 1
+            assert dashboard.json()["budgets_warning"] == 1
+
             transaction_id = transaction.json()["transaction"]["id"]
             updated = client.put(
                 f"/api/v1/transactions/{transaction_id}",

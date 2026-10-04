@@ -26,6 +26,7 @@ from app.infrastructure.security.jwt_handler import (
 from app.interfaces.repositories.sql_budget_alert_repository import SqlBudgetAlertRepository
 from app.interfaces.repositories.sql_budget_repository import SqlBudgetRepository
 from app.interfaces.repositories.sql_category_repository import SqlCategoryRepository
+from app.interfaces.repositories.sql_dashboard_repository import SqlDashboardRepository
 from app.interfaces.repositories.sql_exchange_rate_repository import SqlExchangeRateRepository
 from app.interfaces.repositories.sql_goal_repository import SqlGoalRepository
 from app.interfaces.repositories.sql_import_repository import SqlImportRepository
@@ -36,6 +37,7 @@ from app.interfaces.repositories.sql_wallet_repository import SqlWalletRepositor
 from app.use_cases.auth.login import AuthenticateUserUseCase
 from app.use_cases.auth.register import RegisterUserUseCase
 from app.use_cases.budget_alerts import BudgetAlertService
+from app.use_cases.dashboard import DashboardService
 from app.use_cases.exchange_rates import ExchangeRateService
 from app.use_cases.goals import ManageGoalsUseCase
 from app.use_cases.imports import ImportStatementsUseCase
@@ -98,6 +100,10 @@ def get_budget_alert_service(
 
 def get_report_repository(session: Session = Depends(get_db)) -> SqlReportRepository:
     return SqlReportRepository(session)
+
+
+def get_dashboard_repository(session: Session = Depends(get_db)) -> SqlDashboardRepository:
+    return SqlDashboardRepository(session)
 
 
 def get_exchange_rate_service(session: Session = Depends(get_db)) -> ExchangeRateService:
@@ -190,6 +196,24 @@ def get_manage_goals_use_case(
     repository: SqlGoalRepository = Depends(get_goal_repository),
 ) -> ManageGoalsUseCase:
     return ManageGoalsUseCase(repository)
+
+
+def get_dashboard_service(
+    dashboard_repo: SqlDashboardRepository = Depends(get_dashboard_repository),
+    report_repo: SqlReportRepository = Depends(get_report_repository),
+    wallet_repo: WalletRepositoryInterface = Depends(get_wallet_repository),
+    budget_repo: BudgetRepositoryInterface = Depends(get_budget_repository),
+    budget_alert_service: BudgetAlertService = Depends(get_budget_alert_service),
+    exchange_rate_service: ExchangeRateService = Depends(get_exchange_rate_service),
+) -> DashboardService:
+    return DashboardService(
+        dashboard_repository=dashboard_repo,
+        report_repository=report_repo,
+        wallet_repository=wallet_repo,
+        budget_repository=budget_repo,
+        budget_alert_service=budget_alert_service,
+        exchange_rate_service=exchange_rate_service,
+    )
 
 
 # --- 4. Current Authenticated User ---
