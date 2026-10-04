@@ -187,6 +187,37 @@ docker compose up --build
 
 O Compose disponibiliza a API na porta `8000` e o PostgreSQL na porta `5432`.
 
+## Deploy gratuito na Render
+
+O repositório inclui um [`render.yaml`](render.yaml) para criar um Web Service
+Docker no plano gratuito. No Dashboard da Render, escolha **New > Blueprint**,
+conecte este repositório e informe as variáveis secretas solicitadas:
+
+- `DATABASE_URL`: connection string PostgreSQL completa, incluindo SSL;
+- `CORS_ORIGINS`: lista JSON com as origens permitidas, por exemplo
+  `["https://seu-app.onrender.com"]`.
+
+A `SECRET_KEY` é gerada automaticamente pela Render e não deve ser copiada para
+o repositório. O deploy acompanha a branch `main`, aguarda os checks do GitHub e
+usa `/health` para confirmar que API e banco estão disponíveis. Antes de iniciar
+o Uvicorn, o container executa `alembic upgrade head` de forma idempotente.
+
+O servidor respeita a variável `PORT` fornecida pela plataforma e mantém a porta
+`8000` como padrão local. Depois do primeiro deploy, valide:
+
+```text
+https://<nome-do-servico>.onrender.com/health
+https://<nome-do-servico>.onrender.com/docs
+```
+
+### Cold start no plano gratuito
+
+O serviço gratuito pode ser suspenso após um período sem tráfego. O aplicativo
+cliente deve renderizar sua interface imediatamente e consultar `/health` em
+segundo plano, com timeout e tentativas espaçadas. Enquanto a API inicia, mostre
+um estado como “Preparando seu espaço financeiro”; não bloqueie a troca de tema
+nem apresente o atraso como erro antes de encerrar as tentativas.
+
 ## Qualidade e testes
 
 ```bash
