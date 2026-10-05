@@ -156,20 +156,20 @@ def test_ofx_v1_and_v2_are_parsed(client: TestClient, auth_headers: dict, wallet
     assert card.json()["items"][0]["description"] == "Cafe - Almoco"
 
 
-def test_import_confirmation_rolls_back_when_balance_is_insufficient(
+def test_import_confirmation_allows_negative_wallet_balance(
     client: TestClient, auth_headers: dict, wallet: dict
 ) -> None:
     content = b"Data;Descricao;Valor\n04/10/2026;Large expense;-2000,00\n"
     preview = _upload(client, auth_headers, wallet["id"], content).json()
     batch_id = preview["batch"]["id"]
     confirmed = client.post(f"/api/v1/imports/{batch_id}/confirm", json={}, headers=auth_headers)
-    assert confirmed.status_code == 400
+    assert confirmed.status_code == 200
 
     after = client.get(f"/api/v1/imports/{batch_id}/preview", headers=auth_headers)
-    assert after.json()["batch"]["status"] == "PREVIEW"
-    assert after.json()["items"][0]["status"] == "READY"
+    assert after.json()["batch"]["status"] == "COMPLETED"
+    assert after.json()["items"][0]["status"] == "IMPORTED"
     wallet_detail = client.get(f"/api/v1/wallets/{wallet['id']}", headers=auth_headers)
-    assert wallet_detail.json()["balance"] == "1000.00"
+    assert wallet_detail.json()["balance"] == "-1000.00"
 
 
 def test_import_history_lifecycle_and_ownership(

@@ -3,7 +3,6 @@
 from app.domain.entities import Budget, Category, Transaction, TransactionType, User, Wallet
 from app.domain.exceptions import (
     DomainError,
-    InsufficientFundsError,
     InvalidCredentialsError,
     UnauthorizedWalletAccessError,
     UserAlreadyExistsError,
@@ -18,7 +17,6 @@ __all__ = [
     "Budget",
     "TransactionType",
     "DomainError",
-    "InsufficientFundsError",
     "WalletNotFoundError",
     "UnauthorizedWalletAccessError",
     "UserAlreadyExistsError",

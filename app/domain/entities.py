@@ -12,8 +12,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 from zoneinfo import ZoneInfo
 
-from app.domain.exceptions import InsufficientFundsError
-
 
 def _utc_now() -> datetime:
     """Returns the current timezone-aware UTC datetime."""
@@ -131,25 +129,21 @@ class Wallet:
         self.balance = normalize_money(self.balance + amount)
 
     def withdraw(self, amount: Decimal) -> None:
-        """Deducts an amount from the available wallet balance.
+        """Deduct an expense from the wallet balance.
 
-        Why: Enforces the business invariant of sufficient funds before allowing
-        a debit, preserving financial domain consistency.
+        A personal finance tracker records what actually happened. An expense may
+        therefore leave a wallet negative (for example an overdraft or credit-card
+        account) instead of being rejected because the opening balance is zero.
 
         Args:
             amount: Positive numeric amount to withdraw.
 
         Raises:
             ValueError: If the amount is not strictly positive.
-            InsufficientFundsError: If the current balance is lower than requested.
         """
         amount = normalize_money(amount)
         if amount <= 0:
             raise ValueError("Withdrawal amount must be greater than zero.")
-        if self.balance < amount:
-            raise InsufficientFundsError(
-                wallet_id=self.id or 0, current_balance=self.balance, requested_amount=amount
-            )
         self.balance = normalize_money(self.balance - amount)
 
 

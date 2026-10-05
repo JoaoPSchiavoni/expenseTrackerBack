@@ -136,3 +136,27 @@ def test_frankfurter_adapter_rejects_invalid_payload(monkeypatch: pytest.MonkeyP
 
     with pytest.raises(ExchangeRateProviderError):
         provider.fetch_rate("USD", "BRL", date(2026, 9, 30))
+
+
+def test_frankfurter_adapter_retries_transient_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    responses: list[httpx.Response | Exception] = [
+        httpx.ConnectTimeout("temporary timeout"),
+        _http_response(
+            200,
+            {"date": "2026-09-30", "base": "USD", "quote": "BRL", "rate": 5.2},
+        ),
+    ]
+
+    def fake_get(*args: object, **kwargs: object) -> httpx.Response:
+        response = responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    provider = FrankfurterExchangeRateProvider("https://rates.example/v2")
+
+    rate = provider.fetch_rate("USD", "BRL", date(2026, 9, 30))
+
+    assert rate.rate == Decimal("5.2000000000")
+    assert responses == []

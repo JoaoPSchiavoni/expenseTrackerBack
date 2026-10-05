@@ -46,7 +46,7 @@ def test_income_and_expense_update_balance(
     assert expense.json()["updated_wallet_balance"] == "1129.50"
 
 
-def test_insufficient_funds_does_not_change_balance(
+def test_expense_can_make_wallet_balance_negative(
     client: TestClient, auth_headers: dict, wallet: dict
 ):
     response = _create_transaction(
@@ -56,9 +56,10 @@ def test_insufficient_funds_does_not_change_balance(
         amount="1001.00",
         transaction_type="EXPENSE",
     )
-    assert response.status_code == 400
+    assert response.status_code == 201
+    assert response.json()["updated_wallet_balance"] == "-1.00"
     detail = client.get(f"/api/v1/wallets/{wallet['id']}", headers=auth_headers)
-    assert detail.json()["balance"] == "1000.00"
+    assert detail.json()["balance"] == "-1.00"
 
 
 def test_list_and_detail_transactions(client: TestClient, auth_headers: dict, wallet: dict):
@@ -141,15 +142,15 @@ def test_bulk_creation_rolls_back_every_item_on_failure(
             "transactions": [
                 {"wallet_id": wallet["id"], "amount": "100.00", "transaction_type": "INCOME"},
                 {
-                    "wallet_id": wallet["id"],
-                    "amount": "2000.00",
+                    "wallet_id": 99999,
+                    "amount": "20.00",
                     "transaction_type": "EXPENSE",
                 },
             ]
         },
         headers=auth_headers,
     )
-    assert response.status_code == 400
+    assert response.status_code == 404
     detail = client.get(f"/api/v1/wallets/{wallet['id']}", headers=auth_headers)
     assert detail.json()["balance"] == "1000.00"
     listed = client.get(f"/api/v1/transactions/?wallet_id={wallet['id']}", headers=auth_headers)

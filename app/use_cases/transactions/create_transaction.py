@@ -3,7 +3,7 @@ Use Case: Create Transaction (Income/Expense).
 
 Why: Coordinates the core domain business rule: every financial movement
 must consistently and atomically update the corresponding wallet balance,
-enforcing funds and ownership constraints.
+enforcing ownership and data-integrity constraints.
 """
 
 import logging
@@ -76,7 +76,7 @@ class CreateTransactionUseCase:
         Why: Ensures referential and business integrity block-by-block:
         1. Validates wallet existence.
         2. Verifies ownership by the requesting user (resource security / IDOR defense).
-        3. Applies balance mutation on pure domain entity (deposit or withdrawal with fund checks).
+        3. Applies the balance mutation on the pure domain entity.
         4. Persists the updated balance and new transaction record together.
 
         Args:
@@ -94,7 +94,6 @@ class CreateTransactionUseCase:
             ValueError: If amount is not strictly positive or transaction type is unknown.
             WalletNotFoundError: If target wallet does not exist.
             UnauthorizedWalletAccessError: If the wallet belongs to a different user.
-            InsufficientFundsError: If an expense exceeds available wallet funds.
         """
         if amount <= 0:
             raise ValueError("Transaction amount must be greater than zero.")

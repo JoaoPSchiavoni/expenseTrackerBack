@@ -23,24 +23,36 @@ class UnsupportedCurrencyError(ValueError):
 
 class FrankfurterExchangeRateProvider(ExchangeRateProviderInterface):
     name = "frankfurter"
+    max_attempts = 2
 
     def __init__(self, base_url: str, timeout_seconds: float = 5.0) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
 
     def _get(self, path: str, *, params: dict[str, str] | None = None) -> object:
-        try:
-            response = httpx.get(
-                f"{self.base_url}{path}", params=params, timeout=self.timeout_seconds
-            )
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code in {400, 404, 422}:
-                raise UnsupportedCurrencyError("Unsupported currency or rate date") from exc
-            raise ExchangeRateProviderError("Exchange-rate provider is unavailable") from exc
-        except (httpx.HTTPError, ValueError) as exc:
-            raise ExchangeRateProviderError("Exchange-rate provider is unavailable") from exc
+        last_error: Exception | None = None
+        for attempt in range(self.max_attempts):
+            try:
+                response = httpx.get(
+                    f"{self.base_url}{path}",
+                    params=params,
+                    headers={"User-Agent": "ExpenseTracker/1.0"},
+                    timeout=self.timeout_seconds,
+                    follow_redirects=True,
+                )
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in {400, 404, 422}:
+                    raise UnsupportedCurrencyError("Unsupported currency or rate date") from exc
+                last_error = exc
+            except (httpx.HTTPError, ValueError) as exc:
+                last_error = exc
+
+            if attempt + 1 == self.max_attempts:
+                break
+
+        raise ExchangeRateProviderError("Exchange-rate provider is unavailable") from last_error
 
     def fetch_rate(self, base_currency: str, quote_currency: str, on_date: date) -> ProviderRate:
         payload = self._get(

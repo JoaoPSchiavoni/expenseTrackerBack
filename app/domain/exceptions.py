@@ -14,21 +14,6 @@ class DomainError(Exception):
         self.message = message
 
 
-class InsufficientFundsError(DomainError):
-    """Raised when a wallet lacks sufficient funds for an expense.
-
-    Why: Prevents a bank account or wallet from reaching unauthorized negative balances,
-    protecting a core business invariant.
-    """
-
-    def __init__(self, wallet_id: int, current_balance: object, requested_amount: object) -> None:
-        msg = f"Insufficient funds in wallet {wallet_id}. Current balance: {current_balance}, Requested amount: {requested_amount}"
-        super().__init__(msg)
-        self.wallet_id = wallet_id
-        self.current_balance = current_balance
-        self.requested_amount = requested_amount
-
-
 class WalletNotFoundError(DomainError):
     """Raised when the requested wallet does not exist."""
 

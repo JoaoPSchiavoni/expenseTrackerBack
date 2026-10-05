@@ -19,7 +19,6 @@ from app.domain.exceptions import (
     BudgetAlertNotFoundError,
     ContributionNotFoundError,
     GoalNotFoundError,
-    InsufficientFundsError,
     InvalidCredentialsError,
     InvalidGoalStateError,
     UnauthorizedWalletAccessError,
@@ -81,14 +80,6 @@ app.add_middleware(
 
 # --- Global Domain Exception Handlers ---
 # Why: Translates decoupled domain business exceptions into semantic HTTP status codes
-@app.exception_handler(InsufficientFundsError)
-async def insufficient_funds_handler(request: Request, exc: InsufficientFundsError) -> JSONResponse:
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={"error": "INSUFFICIENT_FUNDS", "detail": exc.message},
-    )
-
-
 @app.exception_handler(WalletNotFoundError)
 async def wallet_not_found_handler(request: Request, exc: WalletNotFoundError) -> JSONResponse:
     return JSONResponse(

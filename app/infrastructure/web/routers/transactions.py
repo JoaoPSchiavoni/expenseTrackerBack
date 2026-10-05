@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.domain.entities import User, require_id
 from app.domain.exceptions import (
-    InsufficientFundsError,
     UnauthorizedWalletAccessError,
     WalletNotFoundError,
 )
@@ -71,8 +70,6 @@ def create_transaction(
         raise HTTPException(status_code=404, detail=exc.message) from exc
     except UnauthorizedWalletAccessError as exc:
         raise HTTPException(status_code=403, detail=exc.message) from exc
-    except InsufficientFundsError as exc:
-        raise HTTPException(status_code=400, detail=exc.message) from exc
     return TransactionWithWalletResponse(
         transaction=TransactionResponse.model_validate(transaction),
         updated_wallet_balance=wallet.balance,

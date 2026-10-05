@@ -66,7 +66,6 @@ class UserModel(Base):
 
 class WalletModel(Base):
     __tablename__ = "wallets"
-    __table_args__ = (CheckConstraint("balance >= 0", name="ck_wallets_balance_nonnegative"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
