@@ -30,6 +30,9 @@ from app.interfaces.repositories.sql_dashboard_repository import SqlDashboardRep
 from app.interfaces.repositories.sql_exchange_rate_repository import SqlExchangeRateRepository
 from app.interfaces.repositories.sql_goal_repository import SqlGoalRepository
 from app.interfaces.repositories.sql_import_repository import SqlImportRepository
+from app.interfaces.repositories.sql_recurring_transaction_repository import (
+    SqlRecurringTransactionRepository,
+)
 from app.interfaces.repositories.sql_report_repository import SqlReportRepository
 from app.interfaces.repositories.sql_transaction_repository import SqlTransactionRepository
 from app.interfaces.repositories.sql_user_repository import SqlUserRepository
@@ -43,9 +46,13 @@ from app.use_cases.goals import ManageGoalsUseCase
 from app.use_cases.imports import ImportStatementsUseCase
 from app.use_cases.interfaces.budget_repository import BudgetRepositoryInterface
 from app.use_cases.interfaces.category_repository import CategoryRepositoryInterface
+from app.use_cases.interfaces.recurring_transaction_repository import (
+    RecurringTransactionRepositoryInterface,
+)
 from app.use_cases.interfaces.transaction_repository import TransactionRepositoryInterface
 from app.use_cases.interfaces.user_repository import UserRepositoryInterface
 from app.use_cases.interfaces.wallet_repository import WalletRepositoryInterface
+from app.use_cases.recurring_transactions import ManageRecurringTransactionsUseCase
 from app.use_cases.transactions.create_transaction import CreateTransactionUseCase
 from app.use_cases.transactions.manage_transaction import ManageTransactionUseCase
 
@@ -125,6 +132,12 @@ def get_goal_repository(session: Session = Depends(get_db)) -> SqlGoalRepository
     return SqlGoalRepository(session)
 
 
+def get_recurring_transaction_repository(
+    session: Session = Depends(get_db),
+) -> RecurringTransactionRepositoryInterface:
+    return SqlRecurringTransactionRepository(session)
+
+
 # --- 3. Use Cases (Interactors) ---
 def get_register_user_use_case(
     user_repo: UserRepositoryInterface = Depends(get_user_repository),
@@ -196,6 +209,20 @@ def get_manage_goals_use_case(
     repository: SqlGoalRepository = Depends(get_goal_repository),
 ) -> ManageGoalsUseCase:
     return ManageGoalsUseCase(repository)
+
+
+def get_manage_recurring_transactions_use_case(
+    repository: RecurringTransactionRepositoryInterface = Depends(
+        get_recurring_transaction_repository
+    ),
+    wallet_repo: WalletRepositoryInterface = Depends(get_wallet_repository),
+    create_transaction: CreateTransactionUseCase = Depends(get_create_transaction_use_case),
+) -> ManageRecurringTransactionsUseCase:
+    return ManageRecurringTransactionsUseCase(
+        repository=repository,
+        wallet_repository=wallet_repo,
+        create_transaction=create_transaction,
+    )
 
 
 def get_dashboard_service(

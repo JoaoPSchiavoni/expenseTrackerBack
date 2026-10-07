@@ -60,6 +60,16 @@ class TransactionSource(str, Enum):
     MANUAL = "MANUAL"
     CSV = "CSV"
     OFX = "OFX"
+    RECURRING = "RECURRING"
+
+
+class RecurrenceFrequency(str, Enum):
+    """Supported calendar intervals for planned transactions."""
+
+    DAILY = "DAILY"
+    WEEKLY = "WEEKLY"
+    MONTHLY = "MONTHLY"
+    YEARLY = "YEARLY"
 
 
 class GoalStatus(str, Enum):
@@ -177,6 +187,28 @@ class Transaction:
     import_batch_id: int | None = None
     id: int | None = None
     created_at: datetime = field(default_factory=_utc_now)
+
+
+@dataclass
+class RecurringTransaction:
+    """A reusable rule that materializes planned financial movements."""
+
+    user_id: int
+    wallet_id: int
+    amount: Decimal
+    transaction_type: TransactionType
+    frequency: RecurrenceFrequency
+    start_date: date
+    next_run_date: date
+    category_id: int | None = None
+    description: str | None = None
+    interval_count: int = 1
+    end_date: date | None = None
+    is_active: bool = True
+    id: int | None = None
+    last_generated_at: datetime | None = None
+    created_at: datetime = field(default_factory=_utc_now)
+    updated_at: datetime = field(default_factory=_utc_now)
 
 
 @dataclass

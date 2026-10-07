@@ -9,6 +9,9 @@ from app.infrastructure.web.routers.dashboard import router as dashboard_router
 from app.infrastructure.web.routers.goals import router as goals_router
 from app.infrastructure.web.routers.health import router as health_router
 from app.infrastructure.web.routers.imports import router as imports_router
+from app.infrastructure.web.routers.recurring_transactions import (
+    router as recurring_transactions_router,
+)
 from app.infrastructure.web.routers.reports import router as reports_router
 from app.infrastructure.web.routers.transactions import router as transactions_router
 from app.infrastructure.web.routers.users import router as users_router
@@ -25,6 +28,7 @@ __all__ = [
     "transactions_router",
     "budgets_router",
     "reports_router",
+    "recurring_transactions_router",
     "health_router",
     "goals_router",
     "imports_router",

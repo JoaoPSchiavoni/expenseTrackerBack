@@ -62,6 +62,9 @@ class UserModel(Base):
     import_batches: Mapped[list["ImportBatchModel"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    recurring_transactions: Mapped[list["RecurringTransactionModel"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class WalletModel(Base):
@@ -86,6 +89,9 @@ class WalletModel(Base):
     import_batches: Mapped[list["ImportBatchModel"]] = relationship(
         back_populates="wallet", cascade="all, delete-orphan"
     )
+    recurring_transactions: Mapped[list["RecurringTransactionModel"]] = relationship(
+        back_populates="wallet", cascade="all, delete-orphan"
+    )
 
 
 class CategoryModel(Base):
@@ -102,6 +108,9 @@ class CategoryModel(Base):
     budgets: Mapped[list["BudgetModel"]] = relationship(
         back_populates="category", cascade="all, delete-orphan"
     )
+    recurring_transactions: Mapped[list["RecurringTransactionModel"]] = relationship(
+        back_populates="category"
+    )
 
 
 class TransactionModel(Base):
@@ -113,7 +122,7 @@ class TransactionModel(Base):
             name="ck_transactions_type_valid",
         ),
         CheckConstraint(
-            "source IN ('MANUAL', 'CSV', 'OFX')",
+            "source IN ('MANUAL', 'CSV', 'OFX', 'RECURRING')",
             name="ck_transactions_source_valid",
         ),
         CheckConstraint("exchange_rate > 0", name="ck_transactions_exchange_rate_positive"),
@@ -157,6 +166,71 @@ class TransactionModel(Base):
     wallet: Mapped[WalletModel] = relationship(back_populates="transactions")
     category: Mapped[CategoryModel | None] = relationship(back_populates="transactions")
     import_batch: Mapped["ImportBatchModel | None"] = relationship(back_populates="transactions")
+
+
+class RecurringTransactionModel(Base):
+    """Calendar rule used to generate transactions when they become due."""
+
+    __tablename__ = "recurring_transactions"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_recurring_transactions_amount_positive"),
+        CheckConstraint(
+            "transaction_type IN ('INCOME', 'EXPENSE')",
+            name="ck_recurring_transactions_type_valid",
+        ),
+        CheckConstraint(
+            "frequency IN ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY')",
+            name="ck_recurring_transactions_frequency_valid",
+        ),
+        CheckConstraint(
+            "interval_count > 0", name="ck_recurring_transactions_interval_positive"
+        ),
+        CheckConstraint(
+            "end_date IS NULL OR end_date >= start_date",
+            name="ck_recurring_transactions_date_range",
+        ),
+        Index(
+            "ix_recurring_transactions_due",
+            "user_id",
+            "is_active",
+            "next_run_date",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    wallet_id: Mapped[int] = mapped_column(
+        ForeignKey("wallets.id", ondelete="CASCADE"), index=True
+    )
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    transaction_type: Mapped[str] = mapped_column(String(20))
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    frequency: Mapped[str] = mapped_column(String(20))
+    interval_count: Mapped[int] = mapped_column(default=1, server_default=text("1"))
+    start_date: Mapped[date] = mapped_column(Date)
+    next_run_date: Mapped[date] = mapped_column(Date, index=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    last_generated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now()
+    )
+
+    user: Mapped[UserModel] = relationship(back_populates="recurring_transactions")
+    wallet: Mapped[WalletModel] = relationship(back_populates="recurring_transactions")
+    category: Mapped[CategoryModel | None] = relationship(
+        back_populates="recurring_transactions"
+    )
 
 
 class ImportBatchModel(Base):

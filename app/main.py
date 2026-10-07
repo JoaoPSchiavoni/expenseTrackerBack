@@ -39,6 +39,7 @@ from app.infrastructure.web.routers import (
     goals_router,
     health_router,
     imports_router,
+    recurring_transactions_router,
     reports_router,
     transactions_router,
     users_router,
@@ -188,4 +189,5 @@ app.include_router(budget_alerts_router, prefix=settings.API_V1_PREFIX)
 app.include_router(transactions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(budgets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)
+app.include_router(recurring_transactions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(health_router)
