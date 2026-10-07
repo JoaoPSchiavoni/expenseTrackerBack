@@ -73,3 +73,57 @@ class DashboardRecentTransactionResponse(BaseModel):
     source: TransactionSource
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BalanceProjectionItem(BaseModel):
+    month: str
+    projected_income: Decimal
+    projected_expense: Decimal
+    net_change: Decimal
+    projected_balance: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BalanceProjectionResponse(BaseModel):
+    currency: CurrencyCode
+    current_balance: Decimal
+    items: list[BalanceProjectionItem]
+
+
+class PeriodComparisonResponse(BaseModel):
+    current_period: str
+    previous_period: str
+    current_income: Decimal
+    previous_income: Decimal
+    income_change_percentage: Decimal | None
+    current_expense: Decimal
+    previous_expense: Decimal
+    expense_change_percentage: Decimal | None
+    current_net: Decimal
+    previous_net: Decimal
+    net_change: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FinancialHealthResponse(BaseModel):
+    score: int
+    status: str
+    summary: str
+    savings_rate: Decimal
+    reserve_months: Decimal
+    budgets_on_track: int
+    budgets_at_risk: int
+    active_goals: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FinancialRecommendationResponse(BaseModel):
+    priority: str
+    category: str
+    title: str
+    message: str
+
+    model_config = ConfigDict(from_attributes=True)

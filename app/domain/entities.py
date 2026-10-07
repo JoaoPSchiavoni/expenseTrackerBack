@@ -271,7 +271,9 @@ class FinancialGoal:
     def progress_percentage(self) -> Decimal:
         if self.target_amount <= 0:
             return Decimal("0.00")
-        return normalize_money(min(Decimal("100.00"), self.current_amount * 100 / self.target_amount))
+        return normalize_money(
+            min(Decimal("100.00"), self.current_amount * 100 / self.target_amount)
+        )
 
 
 @dataclass

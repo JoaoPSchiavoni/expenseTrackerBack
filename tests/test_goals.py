@@ -98,9 +98,7 @@ def test_contributions_complete_goal_and_preserve_history(
     assert completed_goal["progress_percentage"] == "100.00"
     assert completed_goal["completed_at"] is not None
 
-    history = client.get(
-        f"/api/v1/goals/{goal['id']}/contributions", headers=auth_headers
-    )
+    history = client.get(f"/api/v1/goals/{goal['id']}/contributions", headers=auth_headers)
     assert history.status_code == 200
     assert len(history.json()) == 2
     assert {item["note"] for item in history.json()} == {"First deposit", "Finish"}
@@ -208,9 +206,7 @@ def test_cancel_reopen_and_filter_goals(client: TestClient, auth_headers: dict[s
     assert reopened.json()["status"] == "ACTIVE"
 
 
-def test_increasing_completed_target_reopens_goal(
-    client: TestClient, auth_headers: dict[str, str]
-):
+def test_increasing_completed_target_reopens_goal(client: TestClient, auth_headers: dict[str, str]):
     goal = _create_goal(client, auth_headers, target_amount="100.00")
     client.post(
         f"/api/v1/goals/{goal['id']}/contributions",
@@ -254,12 +250,8 @@ def test_goal_validation_and_authentication(client: TestClient, auth_headers: di
         {"name": "Trip", "target_amount": "1.001"},
     ]
     for payload in invalid_payloads:
-        assert (
-            client.post("/api/v1/goals/", json=payload, headers=auth_headers).status_code == 422
-        )
+        assert client.post("/api/v1/goals/", json=payload, headers=auth_headers).status_code == 422
     assert (
-        client.post(
-            "/api/v1/goals/", json={"name": "Trip", "target_amount": "100.00"}
-        ).status_code
+        client.post("/api/v1/goals/", json={"name": "Trip", "target_amount": "100.00"}).status_code
         == 401
     )

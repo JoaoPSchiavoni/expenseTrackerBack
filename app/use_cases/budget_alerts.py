@@ -76,9 +76,7 @@ class BudgetAlertService:
             budget.period, reference, timezone_name
         )
         spent = normalize_money(
-            self.alert_repository.expense_total(
-                budget.user_id, budget.category_id, start, end
-            )
+            self.alert_repository.expense_total(budget.user_id, budget.category_id, start, end)
         )
         percentage = normalize_money(spent * 100 / budget.limit_amount)
         if percentage >= 100:

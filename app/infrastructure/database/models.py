@@ -182,9 +182,7 @@ class RecurringTransactionModel(Base):
             "frequency IN ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY')",
             name="ck_recurring_transactions_frequency_valid",
         ),
-        CheckConstraint(
-            "interval_count > 0", name="ck_recurring_transactions_interval_positive"
-        ),
+        CheckConstraint("interval_count > 0", name="ck_recurring_transactions_interval_positive"),
         CheckConstraint(
             "end_date IS NULL OR end_date >= start_date",
             name="ck_recurring_transactions_date_range",
@@ -198,12 +196,8 @@ class RecurringTransactionModel(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
-    wallet_id: Mapped[int] = mapped_column(
-        ForeignKey("wallets.id", ondelete="CASCADE"), index=True
-    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    wallet_id: Mapped[int] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"), index=True)
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -228,9 +222,7 @@ class RecurringTransactionModel(Base):
 
     user: Mapped[UserModel] = relationship(back_populates="recurring_transactions")
     wallet: Mapped[WalletModel] = relationship(back_populates="recurring_transactions")
-    category: Mapped[CategoryModel | None] = relationship(
-        back_populates="recurring_transactions"
-    )
+    category: Mapped[CategoryModel | None] = relationship(back_populates="recurring_transactions")
 
 
 class ImportBatchModel(Base):
@@ -359,9 +351,7 @@ class BudgetModel(Base):
         String(20), default="MONTHLY", server_default=text("'MONTHLY'")
     )
     alert_threshold: Mapped[int] = mapped_column(default=80, server_default=text("80"))
-    alerts_enabled: Mapped[bool] = mapped_column(
-        Boolean, default=True, server_default=text("true")
-    )
+    alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now, server_default=func.now()
     )
@@ -396,9 +386,7 @@ class BudgetAlertModel(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    budget_id: Mapped[int] = mapped_column(
-        ForeignKey("budgets.id", ondelete="CASCADE"), index=True
-    )
+    budget_id: Mapped[int] = mapped_column(ForeignKey("budgets.id", ondelete="CASCADE"), index=True)
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
     )

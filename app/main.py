@@ -2,7 +2,7 @@
 FastAPI Main Application Entrypoint (Expense Tracker).
 
 Why: Initializes the web application, registers domain exception handlers,
-configures CORS middleware, and includes routers mapping all 57 endpoints
+configures CORS middleware, and includes routers mapping all 67 endpoints
 from the technical specification.
 """
 
@@ -147,9 +147,7 @@ async def contribution_not_found_handler(
 
 
 @app.exception_handler(InvalidGoalStateError)
-async def invalid_goal_state_handler(
-    request: Request, exc: InvalidGoalStateError
-) -> JSONResponse:
+async def invalid_goal_state_handler(request: Request, exc: InvalidGoalStateError) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content={"error": "INVALID_GOAL_STATE", "detail": exc.message},

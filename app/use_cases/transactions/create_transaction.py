@@ -166,9 +166,7 @@ class CreateTransactionUseCase:
             import_batch_id=import_batch_id,
         )
         saved_transaction = self.transaction_repository.create(new_transaction)
-        self.budget_alert_service.evaluate_transaction(
-            saved_transaction, user_id, timezone_name
-        )
+        self.budget_alert_service.evaluate_transaction(saved_transaction, user_id, timezone_name)
 
         logger.info(
             "Transaction %s created for wallet %s with new balance %s",

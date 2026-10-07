@@ -100,7 +100,9 @@ class ManageGoalsUseCase:
             goal.completed_at = None
         elif status == GoalStatus.ACTIVE:
             if goal.current_amount >= goal.target_amount:
-                raise InvalidGoalStateError("A completed goal cannot be reopened without a new target")
+                raise InvalidGoalStateError(
+                    "A completed goal cannot be reopened without a new target"
+                )
             goal.status = GoalStatus.ACTIVE
             goal.completed_at = None
         return self.repository.update(goal)

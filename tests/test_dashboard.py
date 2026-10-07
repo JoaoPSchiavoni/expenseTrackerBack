@@ -41,6 +41,7 @@ def _transaction(
     *,
     category_id: int | None = None,
     description: str | None = None,
+    occurred_at: datetime | None = None,
 ) -> dict:
     response = client.post(
         "/api/v1/transactions/",
@@ -50,6 +51,7 @@ def _transaction(
             "transaction_type": transaction_type,
             "category_id": category_id,
             "description": description,
+            "occurred_at": occurred_at.isoformat() if occurred_at else None,
         },
         headers=headers,
     )
@@ -198,9 +200,7 @@ def test_dashboard_recent_transactions_are_enriched_and_limited(
         "INCOME",
         description="Latest",
     )
-    response = client.get(
-        "/api/v1/dashboard/recent-transactions?limit=1", headers=auth_headers
-    )
+    response = client.get("/api/v1/dashboard/recent-transactions?limit=1", headers=auth_headers)
     assert response.status_code == 200
     assert len(response.json()) == 1
     item = response.json()[0]
@@ -219,9 +219,7 @@ def test_dashboard_converts_wallet_net_worth_to_base_currency(
         headers=auth_headers,
     )
     assert wallet.status_code == 201
-    service = ExchangeRateService(
-        SqlExchangeRateRepository(db_session), DashboardRateProvider()
-    )
+    service = ExchangeRateService(SqlExchangeRateRepository(db_session), DashboardRateProvider())
     app.dependency_overrides[get_exchange_rate_service] = lambda: service
     try:
         response = client.get("/api/v1/dashboard/overview", headers=auth_headers)
@@ -242,18 +240,14 @@ def test_dashboard_supports_negative_wallet_balance(
     assert response.json()["net_worth"] == "-200.00"
 
 
-def test_empty_dashboard_and_request_validation(
-    client: TestClient, auth_headers: dict[str, str]
-):
+def test_empty_dashboard_and_request_validation(client: TestClient, auth_headers: dict[str, str]):
     overview = client.get("/api/v1/dashboard/overview", headers=auth_headers)
     assert overview.status_code == 200
     assert overview.json()["total_income"] == "0.00"
     assert overview.json()["net_worth"] == "0.00"
     assert overview.json()["active_wallets"] == 0
 
-    categories = client.get(
-        "/api/v1/dashboard/spending-by-category", headers=auth_headers
-    )
+    categories = client.get("/api/v1/dashboard/spending-by-category", headers=auth_headers)
     assert categories.status_code == 200
     assert categories.json()["items"] == []
 
@@ -262,7 +256,92 @@ def test_empty_dashboard_and_request_validation(
         == 422
     )
     assert (
-        client.get("/api/v1/dashboard/cash-flow?months=0", headers=auth_headers).status_code
-        == 422
+        client.get("/api/v1/dashboard/cash-flow?months=0", headers=auth_headers).status_code == 422
     )
     assert client.get("/api/v1/dashboard/overview").status_code == 401
+
+
+def test_financial_intelligence_projection_comparison_health_and_recommendations(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    wallet: dict,
+    category: dict,
+):
+    now = datetime.now(UTC)
+    previous_year = now.year if now.month > 1 else now.year - 1
+    previous_month = now.month - 1 if now.month > 1 else 12
+    previous_date = datetime(previous_year, previous_month, 15, 12, tzinfo=UTC)
+    _transaction(
+        client,
+        auth_headers,
+        wallet["id"],
+        "100.00",
+        "EXPENSE",
+        category_id=category["id"],
+        occurred_at=previous_date,
+    )
+    _transaction(client, auth_headers, wallet["id"], "500.00", "INCOME")
+    _transaction(
+        client,
+        auth_headers,
+        wallet["id"],
+        "150.00",
+        "EXPENSE",
+        category_id=category["id"],
+    )
+    recurring = client.post(
+        "/api/v1/recurring-transactions/",
+        json={
+            "wallet_id": wallet["id"],
+            "amount": "80.00",
+            "transaction_type": "EXPENSE",
+            "description": "Subscription",
+            "frequency": "MONTHLY",
+            "start_date": now.date().isoformat(),
+        },
+        headers=auth_headers,
+    )
+    assert recurring.status_code == 201
+
+    projection = client.get("/api/v1/dashboard/balance-projection?months=3", headers=auth_headers)
+    assert projection.status_code == 200
+    projection_payload = projection.json()
+    assert projection_payload["currency"] == "BRL"
+    assert len(projection_payload["items"]) == 3
+    assert projection_payload["items"][0]["projected_expense"] == "80.00"
+    assert projection_payload["items"][0]["projected_balance"] == "1170.00"
+
+    month = now.strftime("%Y-%m")
+    comparison = client.get(
+        f"/api/v1/dashboard/period-comparison?month={month}", headers=auth_headers
+    )
+    assert comparison.status_code == 200
+    comparison_payload = comparison.json()
+    assert comparison_payload["current_income"] == "500.00"
+    assert comparison_payload["current_expense"] == "150.00"
+    assert comparison_payload["previous_expense"] == "100.00"
+    assert comparison_payload["expense_change_percentage"] == "50.00"
+
+    health = client.get(f"/api/v1/dashboard/financial-health?month={month}", headers=auth_headers)
+    assert health.status_code == 200
+    assert 0 <= health.json()["score"] <= 100
+    assert health.json()["status"] in {"CRITICAL", "ATTENTION", "STABLE", "HEALTHY"}
+
+    recommendations = client.get(
+        f"/api/v1/dashboard/recommendations?month={month}", headers=auth_headers
+    )
+    assert recommendations.status_code == 200
+    assert recommendations.json()
+    assert recommendations.json()[0]["priority"] in {"HIGH", "MEDIUM", "LOW"}
+
+
+def test_financial_intelligence_validates_ranges_and_authentication(
+    client: TestClient, auth_headers: dict[str, str]
+):
+    assert (
+        client.get(
+            "/api/v1/dashboard/balance-projection?months=0", headers=auth_headers
+        ).status_code
+        == 422
+    )
+    assert client.get("/api/v1/dashboard/financial-health").status_code == 401

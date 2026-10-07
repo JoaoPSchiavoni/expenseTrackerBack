@@ -2,11 +2,11 @@
 
 API REST de finanças pessoais construída como projeto de portfólio com FastAPI, PostgreSQL, SQLAlchemy e Clean Architecture.
 
-O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, importação CSV/OFX, conversão histórica de moedas, metas financeiras, orçamentos com alertas, dashboard e relatórios financeiros. Todos os recursos são isolados por usuário.
+O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, recorrências, importação CSV/OFX, conversão histórica de moedas, metas financeiras, orçamentos com alertas, inteligência financeira, dashboard e relatórios. Todos os recursos são isolados por usuário.
 
 ## Destaques técnicos
 
-- 57 operações HTTP funcionais e documentadas com OpenAPI.
+- 67 operações HTTP funcionais e documentadas com OpenAPI.
 - Valores monetários armazenados como `NUMERIC(14, 2)` e manipulados com `Decimal`.
 - Taxas de câmbio diárias armazenadas com precisão `NUMERIC(20, 10)`.
 - Conversão histórica com cache local e integração substituível com o Frankfurter v2.
@@ -163,6 +163,10 @@ Os endpoints retornam valores na moeda-base e estruturas diretamente consumívei
 - `GET /api/v1/dashboard/cash-flow`: série mensal de receitas, despesas e saldo, preenchendo meses vazios.
 - `GET /api/v1/dashboard/spending-by-category`: ranking e percentual de participação de cada categoria.
 - `GET /api/v1/dashboard/recent-transactions`: movimentações recentes enriquecidas com carteira e categoria.
+- `GET /api/v1/dashboard/balance-projection`: projeção mensal do saldo a partir das recorrências ativas.
+- `GET /api/v1/dashboard/period-comparison`: comparação de receitas, despesas e saldo com o mês anterior.
+- `GET /api/v1/dashboard/financial-health`: nota de saúde financeira de 0 a 100 com métricas explicáveis.
+- `GET /api/v1/dashboard/recommendations`: recomendações automáticas ordenadas por prioridade.
 
 O patrimônio converte o saldo das carteiras para a moeda-base usando o mesmo cache histórico de cotações das transações. Períodos e agrupamentos respeitam o fuso horário configurado pelo usuário.
 

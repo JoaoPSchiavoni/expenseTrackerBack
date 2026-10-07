@@ -17,9 +17,7 @@ def _create_schedule(
         "start_date": "2026-01-31",
     }
     payload.update(overrides)
-    response = client.post(
-        "/api/v1/recurring-transactions/", json=payload, headers=headers
-    )
+    response = client.post("/api/v1/recurring-transactions/", json=payload, headers=headers)
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -48,13 +46,14 @@ def test_create_list_update_and_delete_recurring_transaction(
     assert updated.json()["amount"] == "125.50"
     assert updated.json()["is_active"] is False
 
-    deleted = client.delete(
-        f"/api/v1/recurring-transactions/{created['id']}", headers=auth_headers
-    )
+    deleted = client.delete(f"/api/v1/recurring-transactions/{created['id']}", headers=auth_headers)
     assert deleted.status_code == 204
-    assert client.get(
-        f"/api/v1/recurring-transactions/{created['id']}", headers=auth_headers
-    ).status_code == 404
+    assert (
+        client.get(
+            f"/api/v1/recurring-transactions/{created['id']}", headers=auth_headers
+        ).status_code
+        == 404
+    )
 
 
 def test_process_due_materializes_month_end_occurrences_once(
@@ -82,14 +81,10 @@ def test_process_due_materializes_month_end_occurrences_once(
     }
     assert {item["source"] for item in transactions.json()} == {"RECURRING"}
 
-    wallet_detail = client.get(
-        f"/api/v1/wallets/{wallet['id']}", headers=auth_headers
-    )
+    wallet_detail = client.get(f"/api/v1/wallets/{wallet['id']}", headers=auth_headers)
     assert wallet_detail.json()["balance"] == "700.00"
 
-    schedule = client.get(
-        f"/api/v1/recurring-transactions/{recurring['id']}", headers=auth_headers
-    )
+    schedule = client.get(f"/api/v1/recurring-transactions/{recurring['id']}", headers=auth_headers)
     assert schedule.json()["next_run_date"] == "2026-04-30"
 
     repeated = client.post(

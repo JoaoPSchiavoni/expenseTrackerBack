@@ -44,9 +44,7 @@ class SqlBudgetRepository(BudgetRepositoryInterface):
         )
         return self._to_entity(model) if model else None
 
-    def get_by_scope(
-        self, user_id: int, category_id: int | None, period: str
-    ) -> Budget | None:
+    def get_by_scope(self, user_id: int, category_id: int | None, period: str) -> Budget | None:
         category_filter = (
             BudgetModel.category_id.is_(None)
             if category_id is None

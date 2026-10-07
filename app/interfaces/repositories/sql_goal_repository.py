@@ -74,16 +74,11 @@ class SqlGoalRepository(GoalRepositoryInterface):
         limit: int,
         offset: int,
     ) -> list[FinancialGoal]:
-        query = self.session.query(FinancialGoalModel).filter(
-            FinancialGoalModel.user_id == user_id
-        )
+        query = self.session.query(FinancialGoalModel).filter(FinancialGoalModel.user_id == user_id)
         if status is not None:
             query = query.filter(FinancialGoalModel.status == status.value)
         models = (
-            query.order_by(FinancialGoalModel.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
+            query.order_by(FinancialGoalModel.created_at.desc()).offset(offset).limit(limit).all()
         )
         return [self._goal_to_entity(model) for model in models]
 

@@ -124,6 +124,8 @@ class ManageTransactionUseCase:
         transaction, wallet = self._load(transaction_id, user_id)
         self._reverse(wallet, transaction)
         self.transaction_repository.delete(require_id(transaction.id))
-        updated_wallet = self.wallet_repository.update_balance(require_id(wallet.id), wallet.balance)
+        updated_wallet = self.wallet_repository.update_balance(
+            require_id(wallet.id), wallet.balance
+        )
         self.budget_alert_service.evaluate_transaction(transaction, user_id, timezone_name)
         return updated_wallet

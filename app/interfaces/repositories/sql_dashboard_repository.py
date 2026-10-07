@@ -62,9 +62,7 @@ class SqlDashboardRepository(DashboardRepositoryInterface):
             for occurred_at, transaction_type, base_amount in rows
         ]
 
-    def recent_transactions(
-        self, user_id: int, limit: int
-    ) -> list[DashboardRecentTransaction]:
+    def recent_transactions(self, user_id: int, limit: int) -> list[DashboardRecentTransaction]:
         rows = (
             self.session.query(TransactionModel, WalletModel.name, CategoryModel.name)
             .join(WalletModel, TransactionModel.wallet_id == WalletModel.id)

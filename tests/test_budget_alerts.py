@@ -149,14 +149,12 @@ def test_alert_inbox_read_operations_and_ownership(
     count = client.get("/api/v1/budget-alerts/unread-count", headers=auth_headers)
     assert count.json() == {"unread_count": 2}
 
-    read_one = client.patch(
-        f"/api/v1/budget-alerts/{alerts[0]['id']}/read", headers=auth_headers
-    )
+    read_one = client.patch(f"/api/v1/budget-alerts/{alerts[0]['id']}/read", headers=auth_headers)
     assert read_one.status_code == 200
     assert read_one.json()["read_at"] is not None
-    assert client.get(
-        "/api/v1/budget-alerts/unread-count", headers=auth_headers
-    ).json() == {"unread_count": 1}
+    assert client.get("/api/v1/budget-alerts/unread-count", headers=auth_headers).json() == {
+        "unread_count": 1
+    }
 
     other_headers = _other_user_headers(client)
     assert (
@@ -169,9 +167,7 @@ def test_alert_inbox_read_operations_and_ownership(
     read_all = client.post("/api/v1/budget-alerts/read-all", headers=auth_headers)
     assert read_all.status_code == 200
     assert read_all.json() == {"updated": 1}
-    assert client.get(
-        "/api/v1/budget-alerts/?unread_only=true", headers=auth_headers
-    ).json() == []
+    assert client.get("/api/v1/budget-alerts/?unread_only=true", headers=auth_headers).json() == []
 
 
 def test_transaction_correction_resolves_and_recrossing_reactivates_alert(
@@ -181,9 +177,7 @@ def test_transaction_correction_resolves_and_recrossing_reactivates_alert(
     category: dict,
 ):
     _create_budget(client, auth_headers, category["id"])
-    transaction = _expense(
-        client, auth_headers, wallet["id"], category["id"], "100.00"
-    )
+    transaction = _expense(client, auth_headers, wallet["id"], category["id"], "100.00")
     assert len(_alerts(client, auth_headers)) == 2
     client.post("/api/v1/budget-alerts/read-all", headers=auth_headers)
 
@@ -218,13 +212,9 @@ def test_transaction_deletion_resolves_alerts(
     category: dict,
 ):
     _create_budget(client, auth_headers, category["id"], threshold=50)
-    transaction = _expense(
-        client, auth_headers, wallet["id"], category["id"], "60.00"
-    )
+    transaction = _expense(client, auth_headers, wallet["id"], category["id"], "60.00")
     assert len(_alerts(client, auth_headers)) == 1
-    deleted = client.delete(
-        f"/api/v1/transactions/{transaction['id']}", headers=auth_headers
-    )
+    deleted = client.delete(f"/api/v1/transactions/{transaction['id']}", headers=auth_headers)
     assert deleted.status_code == 204
     assert _alerts(client, auth_headers) == []
 
@@ -235,9 +225,7 @@ def test_disabled_alerts_still_expose_live_budget_status(
     wallet: dict,
     category: dict,
 ):
-    budget = _create_budget(
-        client, auth_headers, category["id"], limit="50.00", enabled=False
-    )
+    budget = _create_budget(client, auth_headers, category["id"], limit="50.00", enabled=False)
     _expense(client, auth_headers, wallet["id"], category["id"], "60.00")
     assert _alerts(client, auth_headers) == []
     status = client.get(f"/api/v1/budgets/{budget['id']}/status", headers=auth_headers)
@@ -289,9 +277,7 @@ def test_weekly_status_uses_user_calendar_boundaries(
     category: dict,
 ):
     today = date.today()
-    budget = _create_budget(
-        client, auth_headers, category["id"], period="WEEKLY", threshold=50
-    )
+    budget = _create_budget(client, auth_headers, category["id"], period="WEEKLY", threshold=50)
     _expense(
         client,
         auth_headers,

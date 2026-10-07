@@ -232,6 +232,9 @@ def get_dashboard_service(
     budget_repo: BudgetRepositoryInterface = Depends(get_budget_repository),
     budget_alert_service: BudgetAlertService = Depends(get_budget_alert_service),
     exchange_rate_service: ExchangeRateService = Depends(get_exchange_rate_service),
+    recurring_repo: RecurringTransactionRepositoryInterface = Depends(
+        get_recurring_transaction_repository
+    ),
 ) -> DashboardService:
     return DashboardService(
         dashboard_repository=dashboard_repo,
@@ -240,6 +243,7 @@ def get_dashboard_service(
         budget_repository=budget_repo,
         budget_alert_service=budget_alert_service,
         exchange_rate_service=exchange_rate_service,
+        recurring_transaction_repository=recurring_repo,
     )
 
 

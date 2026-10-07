@@ -110,9 +110,7 @@ class ManageRecurringTransactionsUseCase:
         user_id: int,
         changes: dict[str, object],
     ) -> RecurringTransaction:
-        recurring = self.repository.get_by_id_for_user(
-            recurring_id, user_id, for_update=True
-        )
+        recurring = self.repository.get_by_id_for_user(recurring_id, user_id, for_update=True)
         if recurring is None:
             raise ValueError("Recurring transaction not found")
         if "wallet_id" in changes:
@@ -189,10 +187,7 @@ class ManageRecurringTransactionsUseCase:
                     recurring.interval_count,
                     recurring.start_date.day,
                 )
-                if (
-                    recurring.end_date is not None
-                    and recurring.next_run_date > recurring.end_date
-                ):
+                if recurring.end_date is not None and recurring.next_run_date > recurring.end_date:
                     recurring.is_active = False
             self.repository.update(recurring)
         return generated_ids

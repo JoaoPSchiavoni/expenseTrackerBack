@@ -81,9 +81,9 @@ def process_due_recurring_transactions(
         get_manage_recurring_transactions_use_case
     ),
 ) -> RecurringProcessResponse:
-    selected_date = through_date or datetime.now(UTC).astimezone(
-        ZoneInfo(current_user.timezone)
-    ).date()
+    selected_date = (
+        through_date or datetime.now(UTC).astimezone(ZoneInfo(current_user.timezone)).date()
+    )
     transaction_ids = use_case.process_due(
         user_id=require_id(current_user.id),
         through_date=selected_date,
