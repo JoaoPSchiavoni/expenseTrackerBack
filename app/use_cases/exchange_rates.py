@@ -60,8 +60,6 @@ class ExchangeRateService:
         quote_currency: str,
         on_date: date,
     ) -> ConversionQuote:
-        if amount <= 0:
-            raise ValueError("Amount must be greater than zero")
         provider_rate = self.get_rate(base_currency, quote_currency, on_date)
         normalized_amount = normalize_money(amount)
         return ConversionQuote(

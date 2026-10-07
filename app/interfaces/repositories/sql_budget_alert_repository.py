@@ -42,22 +42,23 @@ class SqlBudgetAlertRepository(BudgetAlertRepositoryInterface):
     def expense_total(
         self,
         user_id: int,
-        category_id: int,
+        category_id: int | None,
         start: datetime,
         end: datetime,
     ) -> Decimal:
-        value = (
+        query = (
             self.session.query(func.coalesce(func.sum(TransactionModel.base_amount), 0))
             .join(WalletModel, TransactionModel.wallet_id == WalletModel.id)
             .filter(
                 WalletModel.user_id == user_id,
-                TransactionModel.category_id == category_id,
                 TransactionModel.transaction_type == "EXPENSE",
                 TransactionModel.occurred_at >= start,
                 TransactionModel.occurred_at < end,
             )
-            .scalar()
         )
+        if category_id is not None:
+            query = query.filter(TransactionModel.category_id == category_id)
+        value = query.scalar()
         return Decimal(value or 0)
 
     def upsert(self, alert: BudgetAlert) -> BudgetAlert:

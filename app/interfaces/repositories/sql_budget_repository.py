@@ -44,12 +44,19 @@ class SqlBudgetRepository(BudgetRepositoryInterface):
         )
         return self._to_entity(model) if model else None
 
-    def get_by_scope(self, user_id: int, category_id: int, period: str) -> Budget | None:
+    def get_by_scope(
+        self, user_id: int, category_id: int | None, period: str
+    ) -> Budget | None:
+        category_filter = (
+            BudgetModel.category_id.is_(None)
+            if category_id is None
+            else BudgetModel.category_id == category_id
+        )
         model = (
             self.session.query(BudgetModel)
             .filter(
                 BudgetModel.user_id == user_id,
-                BudgetModel.category_id == category_id,
+                category_filter,
                 BudgetModel.period == period,
             )
             .first()
@@ -65,10 +72,15 @@ class SqlBudgetRepository(BudgetRepositoryInterface):
         )
         return [self._to_entity(model) for model in models]
 
-    def list_by_category(self, user_id: int, category_id: int) -> list[Budget]:
+    def list_by_category(self, user_id: int, category_id: int | None) -> list[Budget]:
+        category_filter = (
+            BudgetModel.category_id.is_(None)
+            if category_id is None
+            else BudgetModel.category_id == category_id
+        )
         models = (
             self.session.query(BudgetModel)
-            .filter(BudgetModel.user_id == user_id, BudgetModel.category_id == category_id)
+            .filter(BudgetModel.user_id == user_id, category_filter)
             .all()
         )
         return [self._to_entity(model) for model in models]

@@ -10,7 +10,7 @@ class BudgetAlertRepositoryInterface(ABC):
     def expense_total(
         self,
         user_id: int,
-        category_id: int,
+        category_id: int | None,
         start: datetime,
         end: datetime,
     ) -> Decimal: ...

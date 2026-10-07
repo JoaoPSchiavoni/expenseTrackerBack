@@ -66,6 +66,15 @@ def test_service_fetches_persists_and_reuses_rate(db_session: Session) -> None:
     assert provider.fetch_count == 1
 
 
+def test_service_converts_signed_balances(db_session: Session) -> None:
+    provider = StubProvider()
+    service = ExchangeRateService(SqlExchangeRateRepository(db_session), provider)
+
+    quote = service.quote(Decimal("-10.00"), "USD", "BRL", date(2026, 9, 30))
+
+    assert quote.converted_amount == Decimal("-52.50")
+
+
 def test_currency_list_endpoint_uses_provider_metadata(
     client: TestClient, auth_headers: dict, db_session: Session
 ) -> None:

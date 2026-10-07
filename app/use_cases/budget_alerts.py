@@ -21,7 +21,7 @@ from app.use_cases.interfaces.budget_repository import BudgetRepositoryInterface
 @dataclass(frozen=True)
 class BudgetUsage:
     budget_id: int
-    category_id: int
+    category_id: int | None
     period: str
     period_start: date
     period_end: date
@@ -152,9 +152,10 @@ class BudgetAlertService:
         timezone_name: str,
         currency: str,
     ) -> None:
-        if category_id is None:
-            return
-        for budget in self.budget_repository.list_by_category(user_id, category_id):
+        budgets = self.budget_repository.list_by_category(user_id, None)
+        if category_id is not None:
+            budgets += self.budget_repository.list_by_category(user_id, category_id)
+        for budget in budgets:
             self.evaluate_budget(budget, reference, timezone_name, currency)
 
     def evaluate_transaction(

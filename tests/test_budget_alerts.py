@@ -32,7 +32,7 @@ def _expense(
     client: TestClient,
     headers: dict[str, str],
     wallet_id: int,
-    category_id: int,
+    category_id: int | None,
     amount: str,
     *,
     occurred_at: str | None = None,
@@ -105,6 +105,34 @@ def test_warning_and_exceeded_alerts_are_generated_and_deduplicated(
     deduplicated = _alerts(client, auth_headers)
     assert len(deduplicated) == 2
     assert {item["spent_amount"] for item in deduplicated} == {"105.00"}
+
+
+def test_global_budget_tracks_categorized_and_uncategorized_expenses(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    wallet: dict,
+    category: dict,
+):
+    response = client.post(
+        "/api/v1/budgets/",
+        json={"limit_amount": "100.00", "alert_threshold": 80},
+        headers=auth_headers,
+    )
+    assert response.status_code == 201
+    budget = response.json()
+    assert budget["category_id"] is None
+
+    _expense(client, auth_headers, wallet["id"], category["id"], "50.00")
+    _expense(client, auth_headers, wallet["id"], None, "30.00")
+
+    status = client.get(f"/api/v1/budgets/{budget['id']}/status", headers=auth_headers)
+    assert status.status_code == 200
+    assert status.json()["category_id"] is None
+    assert status.json()["spent_amount"] == "80.00"
+    alerts = _alerts(client, auth_headers)
+    assert len(alerts) == 1
+    assert alerts[0]["category_id"] is None
+    assert alerts[0]["alert_type"] == "WARNING"
 
 
 def test_alert_inbox_read_operations_and_ownership(

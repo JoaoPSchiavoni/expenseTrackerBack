@@ -10,9 +10,9 @@ from app.domain.entities import BudgetAlertType, BudgetUsageStatus
 
 
 class BudgetCreateRequest(BaseModel):
-    """Schema for creating a category budget."""
+    """Schema for creating a global or category-specific budget."""
 
-    category_id: int = Field(..., description="Budgeted category ID")
+    category_id: int | None = Field(None, gt=0, description="Optional budgeted category ID")
     limit_amount: Decimal = Field(..., gt=0, decimal_places=2)
     period: Literal["WEEKLY", "MONTHLY"] = "MONTHLY"
     alert_threshold: int = Field(80, ge=1, le=99)
@@ -33,7 +33,7 @@ class BudgetResponse(BaseModel):
 
     id: int
     user_id: int
-    category_id: int
+    category_id: int | None
     limit_amount: Decimal
     period: str
     alert_threshold: int
@@ -45,7 +45,7 @@ class BudgetResponse(BaseModel):
 
 class BudgetUsageResponse(BaseModel):
     budget_id: int
-    category_id: int
+    category_id: int | None
     period: str
     period_start: date
     period_end: date
@@ -65,7 +65,7 @@ class BudgetAlertResponse(BaseModel):
     id: int
     user_id: int
     budget_id: int
-    category_id: int
+    category_id: int | None
     alert_type: BudgetAlertType
     period_start: date
     period_end: date

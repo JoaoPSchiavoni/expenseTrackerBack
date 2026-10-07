@@ -181,11 +181,11 @@ class Transaction:
 
 @dataclass
 class Budget:
-    """Domain entity representing a category spending limit."""
+    """Domain entity representing a global or category spending limit."""
 
     user_id: int
-    category_id: int
     limit_amount: Decimal
+    category_id: int | None = None
     period: str = "MONTHLY"
     alert_threshold: int = 80
     alerts_enabled: bool = True
@@ -199,7 +199,7 @@ class BudgetAlert:
 
     user_id: int
     budget_id: int
-    category_id: int
+    category_id: int | None
     alert_type: BudgetAlertType
     period_start: date
     period_end: date

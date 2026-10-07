@@ -47,7 +47,10 @@ def create_budget(
     alert_service: BudgetAlertService = Depends(get_budget_alert_service),
 ) -> BudgetResponse:
     user_id = require_id(current_user.id)
-    if category_repo.get_by_id_for_user(payload.category_id, user_id) is None:
+    if (
+        payload.category_id is not None
+        and category_repo.get_by_id_for_user(payload.category_id, user_id) is None
+    ):
         raise HTTPException(status_code=404, detail="Category not found")
     if repo.get_by_scope(user_id, payload.category_id, payload.period):
         raise HTTPException(status_code=409, detail="Budget already exists for this scope")

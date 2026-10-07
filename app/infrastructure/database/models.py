@@ -130,7 +130,7 @@ class TransactionModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     wallet_id: Mapped[int] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"))
     category_id: Mapped[int | None] = mapped_column(
-        ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
+        ForeignKey("categories.id", ondelete="CASCADE"), nullable=True, index=True
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     transaction_type: Mapped[str] = mapped_column(String(20))
@@ -265,12 +265,20 @@ class BudgetModel(Base):
             name="ck_budgets_alert_threshold_valid",
         ),
         UniqueConstraint("user_id", "category_id", "period", name="uq_budgets_scope"),
+        Index(
+            "uq_budgets_global_period",
+            "user_id",
+            "period",
+            unique=True,
+            postgresql_where=text("category_id IS NULL"),
+            sqlite_where=text("category_id IS NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    category_id: Mapped[int] = mapped_column(
-        ForeignKey("categories.id", ondelete="CASCADE"), index=True
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="CASCADE"), nullable=True, index=True
     )
     limit_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     period: Mapped[str] = mapped_column(
@@ -285,7 +293,7 @@ class BudgetModel(Base):
     )
 
     user: Mapped[UserModel] = relationship(back_populates="budgets")
-    category: Mapped[CategoryModel] = relationship(back_populates="budgets")
+    category: Mapped[CategoryModel | None] = relationship(back_populates="budgets")
     alerts: Mapped[list["BudgetAlertModel"]] = relationship(
         back_populates="budget", cascade="all, delete-orphan"
     )
@@ -317,8 +325,8 @@ class BudgetAlertModel(Base):
     budget_id: Mapped[int] = mapped_column(
         ForeignKey("budgets.id", ondelete="CASCADE"), index=True
     )
-    category_id: Mapped[int] = mapped_column(
-        ForeignKey("categories.id", ondelete="CASCADE"), index=True
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
     alert_type: Mapped[str] = mapped_column(String(20), index=True)
     period_start: Mapped[date] = mapped_column(Date, index=True)

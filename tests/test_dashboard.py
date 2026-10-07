@@ -231,6 +231,17 @@ def test_dashboard_converts_wallet_net_worth_to_base_currency(
     assert response.json()["net_worth"] == "52.50"
 
 
+def test_dashboard_supports_negative_wallet_balance(
+    client: TestClient, auth_headers: dict[str, str], wallet: dict
+):
+    _transaction(client, auth_headers, wallet["id"], "1200.00", "EXPENSE")
+
+    response = client.get("/api/v1/dashboard/overview", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.json()["net_worth"] == "-200.00"
+
+
 def test_empty_dashboard_and_request_validation(
     client: TestClient, auth_headers: dict[str, str]
 ):

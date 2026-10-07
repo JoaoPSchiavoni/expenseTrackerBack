@@ -40,6 +40,26 @@ def test_budget_requires_owned_category(client: TestClient, auth_headers: dict):
     assert response.status_code == 404
 
 
+def test_budget_can_be_created_without_category(client: TestClient, auth_headers: dict):
+    payload = {"limit_amount": "600.00", "period": "MONTHLY"}
+
+    created = client.post("/api/v1/budgets/", json=payload, headers=auth_headers)
+
+    assert created.status_code == 201
+    assert created.json()["category_id"] is None
+    assert created.json()["limit_amount"] == "600.00"
+    duplicate = client.post("/api/v1/budgets/", json=payload, headers=auth_headers)
+    assert duplicate.status_code == 409
+
+    weekly = client.post(
+        "/api/v1/budgets/",
+        json={"limit_amount": "150.00", "period": "WEEKLY"},
+        headers=auth_headers,
+    )
+    assert weekly.status_code == 201
+    assert weekly.json()["category_id"] is None
+
+
 def test_duplicate_budget_scope_returns_409(client: TestClient, auth_headers: dict, category: dict):
     payload = {"category_id": category["id"], "limit_amount": "100.00", "period": "MONTHLY"}
     assert client.post("/api/v1/budgets/", json=payload, headers=auth_headers).status_code == 201
