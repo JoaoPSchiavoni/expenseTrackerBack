@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.domain.entities import User, require_id
 from app.infrastructure.web.dependencies import get_current_user, get_report_repository
@@ -13,6 +13,7 @@ from app.interfaces.schemas.report import (
     CategorySummaryResponse,
     MonthlyReportResponse,
 )
+from app.use_cases.monthly_pdf import build_monthly_report_pdf
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -46,6 +47,30 @@ def get_monthly_report(
         total_income=income,
         total_expense=expense,
         net_savings=income - expense,
+    )
+
+
+@router.get("/monthly.pdf")
+def download_monthly_report_pdf(
+    month: str = Query(..., pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
+    current_user: User = Depends(get_current_user),
+    repo: SqlReportRepository = Depends(get_report_repository),
+) -> Response:
+    start, end = _month_range(month, current_user.timezone)
+    user_id = require_id(current_user.id)
+    income, expense = repo.monthly_totals(user_id, start, end)
+    pdf = build_monthly_report_pdf(
+        month=month,
+        user_name=current_user.full_name or current_user.email,
+        currency=current_user.base_currency,
+        income=income,
+        expense=expense,
+        categories=repo.category_expenses(user_id, start, end),
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="spendly-{month}.pdf"'},
     )
 
 

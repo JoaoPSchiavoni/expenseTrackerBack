@@ -16,6 +16,8 @@ class UserResponse(BaseModel):
     base_currency: CurrencyCode
     timezone: str
     is_active: bool
+    is_demo: bool
+    onboarding_completed: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -40,6 +42,7 @@ class UserPreferencesUpdateRequest(BaseModel):
 
     base_currency: CurrencyCode | None = None
     timezone: str | None = Field(None, min_length=1, max_length=64)
+    onboarding_completed: bool | None = None
 
     @field_validator("timezone")
     @classmethod

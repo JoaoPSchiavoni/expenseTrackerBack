@@ -2,16 +2,20 @@
 
 API REST de finanças pessoais construída como projeto de portfólio com FastAPI, PostgreSQL, SQLAlchemy e Clean Architecture.
 
-O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, recorrências, importação CSV/OFX, conversão histórica de moedas, metas financeiras, orçamentos com alertas, inteligência financeira, dashboard e relatórios. Todos os recursos são isolados por usuário.
+O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transações de receita e despesa, recorrências, importação CSV/OFX, conversão histórica de moedas, metas financeiras, orçamentos com alertas, inteligência financeira, automações, modo demonstração, dashboard e relatórios PDF. Todos os recursos são isolados por usuário.
 
 ## Destaques técnicos
 
-- 67 operações HTTP funcionais e documentadas com OpenAPI.
+- 80 operações HTTP funcionais e documentadas com OpenAPI.
 - Valores monetários armazenados como `NUMERIC(14, 2)` e manipulados com `Decimal`.
 - Taxas de câmbio diárias armazenadas com precisão `NUMERIC(20, 10)`.
 - Conversão histórica com cache local e integração substituível com o Frankfurter v2.
 - Snapshot contábil de moeda, cotação e valor convertido em cada transação.
 - Importação CSV, OFX 1.x/2.x e QFX com preview antes da confirmação.
+- Regras de categorização por texto exato, conteúdo ou expressão regular, aplicadas também nas importações.
+- Detecção heurística de assinaturas por frequência e estabilidade de valor, com alertas de vencimento.
+- Modo demonstração isolado, com dados fictícios realistas e limpeza automática das sessões antigas.
+- Relatório financeiro mensal em PDF pronto para download e compartilhamento.
 - Deduplicação por carteira, origem e identificador bancário/fingerprint.
 - Arquivos processados em memória e descartados após o parsing.
 - Metas financeiras com progresso calculado, prazo, ciclo de vida e histórico de aportes.
@@ -24,7 +28,7 @@ O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transaç
 - Bloqueio pessimista de carteira no PostgreSQL para evitar disputa de saldo.
 - Proteção contra IDOR em carteiras, categorias, transações, orçamentos e relatórios.
 - Exclusão de carteira implementada como arquivamento para preservar histórico financeiro.
-- 95 testes automatizados: 94 isolados e um fluxo completo em PostgreSQL.
+- 111 testes automatizados, incluindo fluxos isolados e integração PostgreSQL opcional.
 - Cobertura de código de 90%.
 - Ruff, Mypy, Pytest, Coverage, pre-commit e GitHub Actions.
 - Docker e Docker Compose para ambiente reproduzível.
@@ -42,6 +46,7 @@ O sistema oferece autenticação JWT, múltiplas carteiras, categorias, transaç
 | Segurança | bcrypt e PyJWT |
 | Câmbio | Frankfurter API v2 e cache PostgreSQL |
 | Importação | CSV, python-multipart e ofxparse2 |
+| PDF | ReportLab |
 | Testes | Pytest, HTTPX e SQLite em memória |
 | Qualidade | Ruff, Mypy e pytest-cov |
 | Infraestrutura | Docker, Docker Compose e GitHub Actions |
@@ -85,6 +90,9 @@ erDiagram
     USER ||--o{ BUDGET_ALERT : receives
     USER ||--o{ FINANCIAL_GOAL : sets
     USER ||--o{ IMPORT_BATCH : uploads
+    USER ||--o{ CATEGORIZATION_RULE : defines
+    USER ||--o{ DETECTED_SUBSCRIPTION : reviews
+    DETECTED_SUBSCRIPTION ||--o{ BILLING_ALERT : triggers
     WALLET ||--o{ TRANSACTION : contains
     WALLET ||--o{ IMPORT_BATCH : receives
     CATEGORY o|--o{ TRANSACTION : classifies
@@ -101,7 +109,7 @@ Todas as rotas de negócio usam o prefixo `/api/v1`.
 
 | Recurso | Operações |
 |---|---|
-| Autenticação | Registrar e autenticar usuário |
+| Autenticação | Registrar, autenticar e iniciar uma sessão de demonstração |
 | Usuários | Consultar e atualizar perfil, preferências financeiras, alterar senha e desativar conta |
 | Carteiras | Criar, listar, consultar, atualizar e arquivar |
 | Moedas | Listar moedas suportadas e consultar conversão histórica |
@@ -113,6 +121,7 @@ Todas as rotas de negócio usam o prefixo `/api/v1`.
 | Alertas de orçamento | Consumo atual, caixa de notificações, leitura e contagem |
 | Dashboard | Visão geral, fluxo de caixa, gastos por categoria e transações recentes |
 | Relatórios | Consolidado mensal e despesas por categoria |
+| Automação | Regras de categoria, detecção de assinaturas e alertas de cobrança |
 | Sistema | Health check público em `/health` |
 
 Documentação interativa:
@@ -132,6 +141,22 @@ Cada usuário possui uma moeda-base e um fuso horário. Cada transação preserv
 3. Confirme o lote em `POST /api/v1/imports/{id}/confirm`, opcionalmente associando categorias ou ignorando linhas.
 
 CSV usa detecção automática de delimitador e colunas comuns em português/inglês. Para layouts próprios, o campo multipart `options` aceita um objeto JSON com `date`, `description`, `amount` ou `debit`/`credit`, `type`, `id`, `delimiter` e `date_format`.
+
+Regras ativas com `applies_to_imports=true` já preenchem a categoria no preview. O usuário continua podendo substituir a categoria ou ignorar a linha antes da confirmação.
+
+### Automação financeira
+
+- `POST/GET /api/v1/automation/rules`: cria e lista regras de categorização.
+- `POST /api/v1/automation/rules/test-match`: testa uma descrição sem criar lançamento.
+- `POST /api/v1/automation/subscriptions/detect`: identifica cobranças semanais, mensais ou anuais.
+- `POST /api/v1/automation/billing-alerts/sync`: gera alertas de cobrança próxima ou atrasada.
+- `GET /api/v1/automation/billing-alerts`: retorna a caixa de alertas de cobranças.
+
+### Recursos de portfólio
+
+- `POST /api/v1/auth/demo-session` cria um usuário temporário isolado com seis meses de dados, metas, orçamentos, recorrências e regras.
+- `GET /api/v1/reports/monthly.pdf?month=YYYY-MM` gera um relatório mensal diagramado em PDF.
+- O cliente Flutter oferece onboarding guiado e uma página pública com a arquitetura e a stack do projeto.
 
 ### Fluxo de metas financeiras
 

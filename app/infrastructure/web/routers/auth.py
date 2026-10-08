@@ -11,12 +11,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.domain.exceptions import InvalidCredentialsError, UserAlreadyExistsError
 from app.infrastructure.web.dependencies import (
     get_authenticate_user_use_case,
+    get_demo_service,
     get_register_user_use_case,
 )
 from app.interfaces.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.interfaces.schemas.user import UserResponse
 from app.use_cases.auth.login import AuthenticateUserUseCase
 from app.use_cases.auth.register import RegisterUserUseCase
+from app.use_cases.demo import DemoService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -77,3 +79,14 @@ def login_user(
             detail=exc.message,
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
+
+
+@router.post(
+    "/demo-session",
+    response_model=TokenResponse,
+    summary="Create an isolated portfolio demonstration session",
+)
+def create_demo_session(
+    service: DemoService = Depends(get_demo_service),
+) -> TokenResponse:
+    return TokenResponse(access_token=service.create_session(), token_type="bearer")

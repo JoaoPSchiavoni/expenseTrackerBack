@@ -23,6 +23,7 @@ from app.domain.exceptions import (
     UnauthorizedWalletAccessError,
     WalletNotFoundError,
 )
+from app.use_cases.automation import AutomationService
 from app.use_cases.budget_alerts import BudgetAlertService
 from app.use_cases.exchange_rates import ExchangeRateService
 from app.use_cases.interfaces.transaction_repository import TransactionRepositoryInterface
@@ -44,6 +45,7 @@ class CreateTransactionUseCase:
         wallet_repository: WalletRepositoryInterface,
         exchange_rate_service: ExchangeRateService,
         budget_alert_service: BudgetAlertService,
+        automation_service: AutomationService,
     ) -> None:
         """Injects repository dependencies required to complete the workflow.
 
@@ -55,6 +57,7 @@ class CreateTransactionUseCase:
         self.wallet_repository = wallet_repository
         self.exchange_rate_service = exchange_rate_service
         self.budget_alert_service = budget_alert_service
+        self.automation_service = automation_service
 
     def execute(
         self,
@@ -113,6 +116,8 @@ class CreateTransactionUseCase:
             raise WalletNotFoundError(wallet_id)
 
         event_time = normalize_event_datetime(occurred_at, timezone_name)
+        if category_id is None:
+            category_id = self.automation_service.match_category(user_id, description)
         requested_rate_date = event_time.astimezone(ZoneInfo(timezone_name)).date()
         quote = self.exchange_rate_service.quote(
             amount=amount,

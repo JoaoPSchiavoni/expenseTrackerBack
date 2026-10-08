@@ -18,6 +18,7 @@ from app.domain.imports import (
     ImportStatus,
 )
 from app.infrastructure.imports.parsers import ParsedRow, StatementParser
+from app.use_cases.automation import AutomationService
 from app.use_cases.interfaces.category_repository import CategoryRepositoryInterface
 from app.use_cases.interfaces.import_repository import ImportRepositoryInterface
 from app.use_cases.interfaces.transaction_repository import TransactionRepositoryInterface
@@ -35,6 +36,7 @@ class ImportStatementsUseCase:
         wallet_repository: WalletRepositoryInterface,
         category_repository: CategoryRepositoryInterface,
         create_transaction: CreateTransactionUseCase,
+        automation_service: AutomationService,
         parser: StatementParser,
         max_file_size_bytes: int,
         max_rows: int,
@@ -44,6 +46,7 @@ class ImportStatementsUseCase:
         self.wallet_repository = wallet_repository
         self.category_repository = category_repository
         self.create_transaction = create_transaction
+        self.automation_service = automation_service
         self.parser = parser
         self.max_file_size_bytes = max_file_size_bytes
         self.max_rows = max_rows
@@ -135,6 +138,13 @@ class ImportStatementsUseCase:
                     transaction_type=row.transaction_type,
                     description=row.description,
                     external_id=row.external_id,
+                    category_id=(
+                        self.automation_service.match_category(
+                            user_id, row.description, imports_only=True
+                        )
+                        if status == ImportItemStatus.READY
+                        else None
+                    ),
                     error_message=row.error_message,
                 )
                 for row, status in staged_rows

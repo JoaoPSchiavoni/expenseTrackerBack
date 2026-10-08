@@ -1,6 +1,7 @@
 """Web routers package initialization."""
 
 from app.infrastructure.web.routers.auth import router as auth_router
+from app.infrastructure.web.routers.automation import router as automation_router
 from app.infrastructure.web.routers.budget_alerts import router as budget_alerts_router
 from app.infrastructure.web.routers.budgets import router as budgets_router
 from app.infrastructure.web.routers.categories import router as categories_router
@@ -19,6 +20,7 @@ from app.infrastructure.web.routers.wallets import router as wallets_router
 
 __all__ = [
     "auth_router",
+    "automation_router",
     "budget_alerts_router",
     "users_router",
     "wallets_router",

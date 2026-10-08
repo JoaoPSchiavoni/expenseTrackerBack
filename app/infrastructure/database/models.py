@@ -40,6 +40,10 @@ class UserModel(Base):
         String(64), default="America/Sao_Paulo", server_default=text("'America/Sao_Paulo'")
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    onboarding_completed: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now, server_default=func.now()
     )
@@ -63,6 +67,15 @@ class UserModel(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     recurring_transactions: Mapped[list["RecurringTransactionModel"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    categorization_rules: Mapped[list["CategorizationRuleModel"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    detected_subscriptions: Mapped[list["DetectedSubscriptionModel"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    billing_alerts: Mapped[list["BillingAlertModel"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -92,6 +105,9 @@ class WalletModel(Base):
     recurring_transactions: Mapped[list["RecurringTransactionModel"]] = relationship(
         back_populates="wallet", cascade="all, delete-orphan"
     )
+    detected_subscriptions: Mapped[list["DetectedSubscriptionModel"]] = relationship(
+        back_populates="wallet", cascade="all, delete-orphan"
+    )
 
 
 class CategoryModel(Base):
@@ -109,6 +125,12 @@ class CategoryModel(Base):
         back_populates="category", cascade="all, delete-orphan"
     )
     recurring_transactions: Mapped[list["RecurringTransactionModel"]] = relationship(
+        back_populates="category"
+    )
+    categorization_rules: Mapped[list["CategorizationRuleModel"]] = relationship(
+        back_populates="category", cascade="all, delete-orphan"
+    )
+    detected_subscriptions: Mapped[list["DetectedSubscriptionModel"]] = relationship(
         back_populates="category"
     )
 
@@ -223,6 +245,143 @@ class RecurringTransactionModel(Base):
     user: Mapped[UserModel] = relationship(back_populates="recurring_transactions")
     wallet: Mapped[WalletModel] = relationship(back_populates="recurring_transactions")
     category: Mapped[CategoryModel | None] = relationship(back_populates="recurring_transactions")
+
+
+class CategorizationRuleModel(Base):
+    __tablename__ = "categorization_rules"
+    __table_args__ = (
+        CheckConstraint(
+            "match_type IN ('CONTAINS', 'EXACT', 'REGEX')",
+            name="ck_categorization_rules_match_type",
+        ),
+        CheckConstraint("priority >= 0", name="ck_categorization_rules_priority"),
+        UniqueConstraint("user_id", "name", name="uq_categorization_rules_user_name"),
+        Index("ix_categorization_rules_user_active", "user_id", "is_active", "priority"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("categories.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(100))
+    pattern: Mapped[str] = mapped_column(String(255))
+    match_type: Mapped[str] = mapped_column(
+        String(20), default="CONTAINS", server_default=text("'CONTAINS'")
+    )
+    priority: Mapped[int] = mapped_column(default=100, server_default=text("100"))
+    applies_to_imports: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true")
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now(), onupdate=_utc_now
+    )
+
+    user: Mapped[UserModel] = relationship(back_populates="categorization_rules")
+    category: Mapped[CategoryModel] = relationship(back_populates="categorization_rules")
+
+
+class DetectedSubscriptionModel(Base):
+    __tablename__ = "detected_subscriptions"
+    __table_args__ = (
+        CheckConstraint("average_amount > 0", name="ck_subscriptions_amount_positive"),
+        CheckConstraint(
+            "frequency IN ('WEEKLY', 'MONTHLY', 'YEARLY')",
+            name="ck_subscriptions_frequency",
+        ),
+        CheckConstraint(
+            "status IN ('ACTIVE', 'DISMISSED')", name="ck_subscriptions_status"
+        ),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 100", name="ck_subscriptions_confidence"
+        ),
+        UniqueConstraint(
+            "user_id", "wallet_id", "normalized_key", name="uq_subscriptions_identity"
+        ),
+        Index(
+            "ix_subscriptions_user_status_due", "user_id", "status", "next_expected_date"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    wallet_id: Mapped[int] = mapped_column(
+        ForeignKey("wallets.id", ondelete="CASCADE"), index=True
+    )
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    merchant_name: Mapped[str] = mapped_column(String(160))
+    normalized_key: Mapped[str] = mapped_column(String(160))
+    average_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str] = mapped_column(String(3))
+    frequency: Mapped[str] = mapped_column(String(20))
+    next_expected_date: Mapped[date] = mapped_column(Date, index=True)
+    last_charge_date: Mapped[date] = mapped_column(Date)
+    confidence: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    status: Mapped[str] = mapped_column(
+        String(20), default="ACTIVE", server_default=text("'ACTIVE'")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now(), onupdate=_utc_now
+    )
+
+    user: Mapped[UserModel] = relationship(back_populates="detected_subscriptions")
+    wallet: Mapped[WalletModel] = relationship(back_populates="detected_subscriptions")
+    category: Mapped[CategoryModel | None] = relationship(
+        back_populates="detected_subscriptions"
+    )
+    alerts: Mapped[list["BillingAlertModel"]] = relationship(
+        back_populates="subscription", cascade="all, delete-orphan"
+    )
+
+
+class BillingAlertModel(Base):
+    __tablename__ = "billing_alerts"
+    __table_args__ = (
+        CheckConstraint(
+            "alert_type IN ('DUE_SOON', 'OVERDUE')", name="ck_billing_alerts_type"
+        ),
+        CheckConstraint("expected_amount > 0", name="ck_billing_alerts_amount_positive"),
+        UniqueConstraint(
+            "subscription_id",
+            "expected_date",
+            "alert_type",
+            name="uq_billing_alerts_occurrence",
+        ),
+        Index("ix_billing_alerts_user_active", "user_id", "resolved_at", "read_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    subscription_id: Mapped[int] = mapped_column(
+        ForeignKey("detected_subscriptions.id", ondelete="CASCADE"), index=True
+    )
+    alert_type: Mapped[str] = mapped_column(String(20), index=True)
+    expected_date: Mapped[date] = mapped_column(Date, index=True)
+    expected_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str] = mapped_column(String(3))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, server_default=func.now()
+    )
+
+    user: Mapped[UserModel] = relationship(back_populates="billing_alerts")
+    subscription: Mapped[DetectedSubscriptionModel] = relationship(back_populates="alerts")
 
 
 class ImportBatchModel(Base):

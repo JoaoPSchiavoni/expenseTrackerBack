@@ -72,6 +72,22 @@ class RecurrenceFrequency(str, Enum):
     YEARLY = "YEARLY"
 
 
+class RuleMatchType(str, Enum):
+    CONTAINS = "CONTAINS"
+    EXACT = "EXACT"
+    REGEX = "REGEX"
+
+
+class SubscriptionStatus(str, Enum):
+    ACTIVE = "ACTIVE"
+    DISMISSED = "DISMISSED"
+
+
+class BillingAlertType(str, Enum):
+    DUE_SOON = "DUE_SOON"
+    OVERDUE = "OVERDUE"
+
+
 class GoalStatus(str, Enum):
     """Lifecycle states for a financial goal."""
 
@@ -106,6 +122,8 @@ class User:
     base_currency: str = "BRL"
     timezone: str = "America/Sao_Paulo"
     is_active: bool = True
+    is_demo: bool = False
+    onboarding_completed: bool = False
     created_at: datetime = field(default_factory=_utc_now)
 
 
@@ -209,6 +227,54 @@ class RecurringTransaction:
     last_generated_at: datetime | None = None
     created_at: datetime = field(default_factory=_utc_now)
     updated_at: datetime = field(default_factory=_utc_now)
+
+
+@dataclass
+class CategorizationRule:
+    user_id: int
+    category_id: int
+    name: str
+    pattern: str
+    match_type: RuleMatchType = RuleMatchType.CONTAINS
+    priority: int = 100
+    applies_to_imports: bool = True
+    is_active: bool = True
+    id: int | None = None
+    created_at: datetime = field(default_factory=_utc_now)
+    updated_at: datetime = field(default_factory=_utc_now)
+
+
+@dataclass
+class DetectedSubscription:
+    user_id: int
+    wallet_id: int
+    merchant_name: str
+    normalized_key: str
+    average_amount: Decimal
+    currency: str
+    frequency: str
+    next_expected_date: date
+    last_charge_date: date
+    confidence: Decimal
+    category_id: int | None = None
+    status: SubscriptionStatus = SubscriptionStatus.ACTIVE
+    id: int | None = None
+    created_at: datetime = field(default_factory=_utc_now)
+    updated_at: datetime = field(default_factory=_utc_now)
+
+
+@dataclass
+class BillingAlert:
+    user_id: int
+    subscription_id: int
+    alert_type: BillingAlertType
+    expected_date: date
+    expected_amount: Decimal
+    currency: str
+    id: int | None = None
+    read_at: datetime | None = None
+    resolved_at: datetime | None = None
+    created_at: datetime = field(default_factory=_utc_now)
 
 
 @dataclass

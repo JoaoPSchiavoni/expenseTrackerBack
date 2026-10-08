@@ -23,6 +23,7 @@ from app.infrastructure.security.jwt_handler import (
     hash_password,
     verify_password,
 )
+from app.interfaces.repositories.sql_automation_repository import SqlAutomationRepository
 from app.interfaces.repositories.sql_budget_alert_repository import SqlBudgetAlertRepository
 from app.interfaces.repositories.sql_budget_repository import SqlBudgetRepository
 from app.interfaces.repositories.sql_category_repository import SqlCategoryRepository
@@ -39,8 +40,10 @@ from app.interfaces.repositories.sql_user_repository import SqlUserRepository
 from app.interfaces.repositories.sql_wallet_repository import SqlWalletRepository
 from app.use_cases.auth.login import AuthenticateUserUseCase
 from app.use_cases.auth.register import RegisterUserUseCase
+from app.use_cases.automation import AutomationService
 from app.use_cases.budget_alerts import BudgetAlertService
 from app.use_cases.dashboard import DashboardService
+from app.use_cases.demo import DemoService
 from app.use_cases.exchange_rates import ExchangeRateService
 from app.use_cases.goals import ManageGoalsUseCase
 from app.use_cases.imports import ImportStatementsUseCase
@@ -138,6 +141,20 @@ def get_recurring_transaction_repository(
     return SqlRecurringTransactionRepository(session)
 
 
+def get_automation_repository(session: Session = Depends(get_db)) -> SqlAutomationRepository:
+    return SqlAutomationRepository(session)
+
+
+def get_automation_service(
+    repository: SqlAutomationRepository = Depends(get_automation_repository),
+) -> AutomationService:
+    return AutomationService(repository)
+
+
+def get_demo_service(session: Session = Depends(get_db)) -> DemoService:
+    return DemoService(session, hash_password, create_access_token)
+
+
 # --- 3. Use Cases (Interactors) ---
 def get_register_user_use_case(
     user_repo: UserRepositoryInterface = Depends(get_user_repository),
@@ -165,6 +182,7 @@ def get_create_transaction_use_case(
     wallet_repo: WalletRepositoryInterface = Depends(get_wallet_repository),
     exchange_rate_service: ExchangeRateService = Depends(get_exchange_rate_service),
     budget_alert_service: BudgetAlertService = Depends(get_budget_alert_service),
+    automation_service: AutomationService = Depends(get_automation_service),
 ) -> CreateTransactionUseCase:
     """Builds and injects the create transaction use case."""
     return CreateTransactionUseCase(
@@ -172,6 +190,7 @@ def get_create_transaction_use_case(
         wallet_repository=wallet_repo,
         exchange_rate_service=exchange_rate_service,
         budget_alert_service=budget_alert_service,
+        automation_service=automation_service,
     )
 
 
@@ -192,6 +211,7 @@ def get_import_statements_use_case(
     wallet_repo: WalletRepositoryInterface = Depends(get_wallet_repository),
     category_repo: CategoryRepositoryInterface = Depends(get_category_repository),
     create_transaction: CreateTransactionUseCase = Depends(get_create_transaction_use_case),
+    automation_service: AutomationService = Depends(get_automation_service),
 ) -> ImportStatementsUseCase:
     return ImportStatementsUseCase(
         import_repository=import_repo,
@@ -199,6 +219,7 @@ def get_import_statements_use_case(
         wallet_repository=wallet_repo,
         category_repository=category_repo,
         create_transaction=create_transaction,
+        automation_service=automation_service,
         parser=StatementParser(),
         max_file_size_bytes=settings.IMPORT_MAX_FILE_SIZE_BYTES,
         max_rows=settings.IMPORT_MAX_ROWS,

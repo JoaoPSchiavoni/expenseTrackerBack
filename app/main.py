@@ -31,6 +31,7 @@ from app.infrastructure.exchange_rates.frankfurter import (
 )
 from app.infrastructure.web.routers import (
     auth_router,
+    automation_router,
     budget_alerts_router,
     budgets_router,
     categories_router,
@@ -176,6 +177,7 @@ async def unsupported_currency_handler(
 
 # --- Router Registration ---
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
+app.include_router(automation_router, prefix=settings.API_V1_PREFIX)
 app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 app.include_router(wallets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(categories_router, prefix=settings.API_V1_PREFIX)

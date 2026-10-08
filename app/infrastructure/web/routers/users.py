@@ -87,4 +87,6 @@ def update_my_preferences(
         current_user.base_currency = payload.base_currency
     if payload.timezone is not None:
         current_user.timezone = payload.timezone
+    if payload.onboarding_completed is not None:
+        current_user.onboarding_completed = payload.onboarding_completed
     return UserResponse.model_validate(repo.update(current_user))

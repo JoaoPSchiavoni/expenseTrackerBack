@@ -33,6 +33,8 @@ class SqlUserRepository(UserRepositoryInterface):
             base_currency=model.base_currency,
             timezone=model.timezone,
             is_active=model.is_active,
+            is_demo=model.is_demo,
+            onboarding_completed=model.onboarding_completed,
             created_at=model.created_at,
         )
 
@@ -55,6 +57,8 @@ class SqlUserRepository(UserRepositoryInterface):
             base_currency=user.base_currency,
             timezone=user.timezone,
             is_active=user.is_active,
+            is_demo=user.is_demo,
+            onboarding_completed=user.onboarding_completed,
         )
         self.session.add(model)
         self.session.flush()
@@ -71,6 +75,8 @@ class SqlUserRepository(UserRepositoryInterface):
         model.timezone = user.timezone
         model.hashed_password = user.hashed_password
         model.is_active = user.is_active
+        model.is_demo = user.is_demo
+        model.onboarding_completed = user.onboarding_completed
         self.session.flush()
         self.session.refresh(model)
         return self._to_entity(model)
