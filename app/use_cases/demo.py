@@ -5,6 +5,7 @@ from calendar import monthrange
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,16 @@ def _shift_month(reference: date, months: int, day: int) -> date:
     year, month_zero = divmod(month_index, 12)
     month = month_zero + 1
     return date(year, month, min(day, monthrange(year, month)[1]))
+
+
+def _demo_event_time(value: date) -> datetime:
+    """Keep seeded entries inside the intended month in the demo user's timezone."""
+    local_noon = datetime.combine(
+        value,
+        datetime.min.time().replace(hour=12),
+        tzinfo=ZoneInfo("America/Sao_Paulo"),
+    )
+    return local_noon.astimezone(UTC)
 
 
 class DemoService:
@@ -111,7 +122,7 @@ class DemoService:
                     amount=Decimal("8500.00"),
                     transaction_type="INCOME",
                     description="Salário Tech Company",
-                    occurred_at=datetime.combine(salary_date, datetime.min.time(), tzinfo=UTC),
+                    occurred_at=_demo_event_time(salary_date),
                     currency="BRL",
                     base_currency="BRL",
                     exchange_rate=Decimal("1"),
@@ -132,7 +143,7 @@ class DemoService:
                         amount=amount,
                         transaction_type="EXPENSE",
                         description=description,
-                        occurred_at=datetime.combine(event_date, datetime.min.time(), tzinfo=UTC),
+                        occurred_at=_demo_event_time(event_date),
                         currency="BRL",
                         base_currency="BRL",
                         exchange_rate=Decimal("1"),

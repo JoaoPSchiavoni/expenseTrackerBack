@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
@@ -19,6 +19,12 @@ def test_demo_session_is_seeded_and_isolated(client: TestClient) -> None:
     assert len(client.get("/api/v1/categories/", headers=first_headers).json()) == 7
     assert len(client.get("/api/v1/goals/", headers=first_headers).json()) == 1
     assert len(client.get("/api/v1/automation/rules", headers=first_headers).json()) == 2
+    current_month = datetime.now(UTC).strftime("%Y-%m")
+    monthly = client.get(
+        f"/api/v1/reports/monthly?month={current_month}", headers=first_headers
+    )
+    assert monthly.status_code == 200
+    assert monthly.json()["total_income"] == "8500.00"
 
 
 def test_monthly_pdf_has_downloadable_pdf(
